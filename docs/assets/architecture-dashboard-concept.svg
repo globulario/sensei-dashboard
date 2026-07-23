@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Sensei Dashboard V1 visual direction</title>
+  <desc id="desc">A dark architectural dashboard with summary indicators, prose briefing, a stable architecture map, selected-element focus, recent changes, and risk attention.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="1" stop-color="#111b2e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000814" flood-opacity=".35"/>
+    </filter>
+    <style>
+      .panel{fill:#111c2e;stroke:#263650;stroke-width:1.5}
+      .panel2{fill:#0d1727;stroke:#24344e;stroke-width:1.2}
+      .title{fill:#f4f7fb;font:700 24px Inter,Segoe UI,sans-serif}
+      .h2{fill:#f4f7fb;font:650 18px Inter,Segoe UI,sans-serif}
+      .body{fill:#c8d2e3;font:400 14px Inter,Segoe UI,sans-serif}
+      .small{fill:#8fa0b9;font:400 12px Inter,Segoe UI,sans-serif}
+      .metric{fill:#f7fbff;font:700 22px Inter,Segoe UI,sans-serif}
+      .label{fill:#91a2ba;font:600 11px Inter,Segoe UI,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+      .chip{font:650 12px Inter,Segoe UI,sans-serif}
+      .nodeTitle{fill:#f4f7fb;font:650 14px Inter,Segoe UI,sans-serif}
+      .nodeSub{fill:#9eb0c8;font:400 11px Inter,Segoe UI,sans-serif}
+      .nav{fill:#9fb0c8;font:550 14px Inter,Segoe UI,sans-serif}
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+
+  <!-- left rail -->
+  <rect x="0" y="0" width="210" height="900" fill="#091322"/>
+  <circle cx="34" cy="34" r="18" fill="#ef4458"/>
+  <path d="M26 35c8-10 17-8 22-2-7-1-10 2-12 7-4-4-7-5-10-5z" fill="#fff" opacity=".9"/>
+  <text x="62" y="41" class="title" font-size="20">Sensei</text>
+  <text x="28" y="91" class="label">Architecture</text>
+  <g transform="translate(20 112)">
+    <rect width="170" height="42" rx="9" fill="#172842"/>
+    <circle cx="20" cy="21" r="6" fill="#62a8ff"/>
+    <text x="40" y="26" class="nav" fill="#fff">Overview</text>
+  </g>
+  <g class="nav">
+    <text x="60" y="190">Map</text><circle cx="40" cy="185" r="5" fill="#61728b"/>
+    <text x="60" y="234">Decisions</text><circle cx="40" cy="229" r="5" fill="#61728b"/>
+    <text x="60" y="278">Contracts</text><circle cx="40" cy="273" r="5" fill="#61728b"/>
+    <text x="60" y="322">Evidence</text><circle cx="40" cy="317" r="5" fill="#61728b"/>
+    <text x="60" y="366">Changes</text><circle cx="40" cy="361" r="5" fill="#61728b"/>
+  </g>
+  <text x="28" y="850" class="small">Standalone web application</text>
+  <text x="28" y="872" class="small">Agent is the control surface</text>
+
+  <!-- header -->
+  <text x="244" y="42" class="title">Sensei · architecture dashboard</text>
+  <text x="244" y="67" class="small">globulario/sensei · main · revision b85d11c</text>
+  <rect x="1330" y="23" width="238" height="38" rx="10" fill="#101c2e" stroke="#293a54"/>
+  <text x="1350" y="47" class="small">Search architecture…</text>
+
+  <!-- top indicators -->
+  <g filter="url(#shadow)">
+    <rect class="panel" x="234" y="88" width="1334" height="96" rx="14"/>
+  </g>
+  <g transform="translate(258 106)">
+    <text class="label">Graph authority</text>
+    <text y="34" class="metric" fill="#59d49b">Observed · current</text>
+    <text y="58" class="small">Bound to revision and graph identity</text>
+  </g>
+  <line x1="530" y1="108" x2="530" y2="162" stroke="#2a3b56"/>
+  <g transform="translate(554 106)">
+    <text class="label">Architecture health</text>
+    <text y="34" class="metric">Good</text>
+    <text y="58" class="small">2 concerns need attention</text>
+  </g>
+  <line x1="790" y1="108" x2="790" y2="162" stroke="#2a3b56"/>
+  <g transform="translate(814 106)">
+    <text class="label">Projection integrity</text>
+    <text y="34" class="metric">Verified</text>
+    <text y="58" class="small">No mixed-generation evidence</text>
+  </g>
+  <line x1="1080" y1="108" x2="1080" y2="162" stroke="#2a3b56"/>
+  <g transform="translate(1104 106)">
+    <text class="label">Observation completeness</text>
+    <text y="34" class="metric" fill="#ffc761">Partial</text>
+    <text y="58" class="small">Runtime evidence has limitations</text>
+  </g>
+  <line x1="1380" y1="108" x2="1380" y2="162" stroke="#2a3b56"/>
+  <g transform="translate(1404 106)">
+    <text class="label">Since previous</text>
+    <text y="34" class="metric" fill="#59d49b">Improved</text>
+    <text y="58" class="small">Integrity strengthened</text>
+  </g>
+
+  <!-- briefing -->
+  <rect class="panel" x="234" y="204" width="860" height="176" rx="14"/>
+  <text x="258" y="235" class="h2">Architectural Briefing</text>
+  <circle cx="266" cy="268" r="4" fill="#59d49b"/><text x="282" y="273" class="body">The repository is organized into six stable architectural regions.</text>
+  <circle cx="266" cy="301" r="4" fill="#59d49b"/><text x="282" y="306" class="body">Authority is explicit across ingestion, graph publication, and reasoning.</text>
+  <circle cx="266" cy="334" r="4" fill="#ffc761"/><text x="282" y="339" class="body">Two cross-boundary contracts lack complete proving evidence.</text>
+  <text x="916" y="358" class="small">Full briefing →</text>
+
+  <!-- focus -->
+  <rect class="panel" x="1114" y="204" width="454" height="526" rx="14"/>
+  <text x="1138" y="235" class="label">Selected component</text>
+  <text x="1138" y="270" class="title" font-size="22">Awareness Engine</text>
+  <rect x="1396" y="245" width="132" height="28" rx="14" fill="#173c35"/>
+  <text x="1425" y="264" class="chip" fill="#64dfa9">Healthy</text>
+  <text x="1138" y="304" class="body">Transforms repository evidence into</text>
+  <text x="1138" y="327" class="body">governed architectural knowledge.</text>
+  <text x="1138" y="372" class="label">Key contracts</text>
+  <rect class="panel2" x="1138" y="389" width="390" height="54" rx="9"/>
+  <text x="1156" y="412" class="nodeTitle">Events · gRPC</text><text x="1156" y="430" class="nodeSub">API Gateway → Awareness Engine</text>
+  <rect class="panel2" x="1138" y="451" width="390" height="54" rx="9"/>
+  <text x="1156" y="474" class="nodeTitle">Reads / writes · SPARQL</text><text x="1156" y="492" class="nodeSub">Awareness Engine → Knowledge Store</text>
+  <text x="1138" y="544" class="label">Risk and evidence</text>
+  <text x="1138" y="572" class="body" fill="#ffc761">Reasoner evidence is partially observed.</text>
+  <text x="1138" y="597" class="small">22 verified · 9 partial · 10 missing</text>
+  <rect x="1138" y="650" width="390" height="54" rx="10" fill="#3d6ee8"/>
+  <text x="1260" y="683" class="h2">Ask Claude</text>
+
+  <!-- architecture map -->
+  <rect class="panel" x="234" y="400" width="860" height="330" rx="14"/>
+  <text x="258" y="432" class="h2">Architecture Map</text>
+  <g transform="translate(720 413)">
+    <rect width="82" height="28" rx="14" fill="#24456f"/><text x="16" y="19" class="chip" fill="#d7eaff">Structure</text>
+    <text x="104" y="19" class="small">Authority</text>
+    <text x="176" y="19" class="small">Behavior</text>
+    <text x="242" y="19" class="small">Risk</text>
+    <text x="284" y="19" class="small">Change</text>
+  </g>
+
+  <!-- regions -->
+  <rect x="258" y="462" width="205" height="108" rx="13" fill="#102b4a" stroke="#3d78b8"/>
+  <text x="276" y="486" class="nodeTitle">Clients</text>
+  <rect x="276" y="504" width="76" height="45" rx="8" fill="#13233a"/><text x="291" y="525" class="nodeTitle">Web UI</text><text x="291" y="541" class="nodeSub">browser</text>
+  <rect x="364" y="504" width="80" height="45" rx="8" fill="#13233a"/><text x="386" y="525" class="nodeTitle">CLI</text><text x="380" y="541" class="nodeSub">local</text>
+
+  <rect x="486" y="462" width="242" height="108" rx="13" fill="#12392e" stroke="#3d9b78"/>
+  <text x="504" y="486" class="nodeTitle">API and Gateway</text>
+  <rect x="504" y="504" width="90" height="45" rx="8" fill="#12283a"/><text x="519" y="525" class="nodeTitle">HTTP API</text><text x="522" y="541" class="nodeSub">contracts</text>
+  <rect x="606" y="504" width="104" height="45" rx="8" fill="#12283a"/><text x="620" y="525" class="nodeTitle">Authority</text><text x="628" y="541" class="nodeSub">owner RPC</text>
+
+  <rect x="751" y="462" width="319" height="108" rx="13" fill="#30234c" stroke="#745ab1"/>
+  <text x="769" y="486" class="nodeTitle">Awareness Engine</text>
+  <rect x="769" y="504" width="84" height="45" rx="8" fill="#17243a"/><text x="785" y="525" class="nodeTitle">Ingest</text><text x="786" y="541" class="nodeSub">evidence</text>
+  <rect x="865" y="504" width="90" height="45" rx="8" fill="#17243a"/><text x="878" y="525" class="nodeTitle">Reason</text><text x="879" y="541" class="nodeSub">claims</text>
+  <rect x="967" y="504" width="84" height="45" rx="8" fill="#17243a"/><text x="978" y="525" class="nodeTitle">Project</text><text x="980" y="541" class="nodeSub">views</text>
+
+  <rect x="258" y="600" width="300" height="102" rx="13" fill="#24323b" stroke="#66838f"/>
+  <text x="276" y="625" class="nodeTitle">Tooling and Integrations</text>
+  <rect x="276" y="643" width="114" height="42" rx="8" fill="#142338"/><text x="300" y="668" class="nodeTitle">GitHub</text>
+  <rect x="402" y="643" width="138" height="42" rx="8" fill="#142338"/><text x="426" y="668" class="nodeTitle">Editor bridge</text>
+
+  <rect x="582" y="600" width="236" height="102" rx="13" fill="#43361c" stroke="#b49543"/>
+  <text x="600" y="625" class="nodeTitle">Knowledge Store</text>
+  <rect x="600" y="643" width="94" height="42" rx="8" fill="#172238"/><text x="618" y="668" class="nodeTitle">Graph DB</text>
+  <rect x="706" y="643" width="94" height="42" rx="8" fill="#172238"/><text x="724" y="668" class="nodeTitle">Artifacts</text>
+
+  <rect x="842" y="600" width="228" height="102" rx="13" fill="#3d2527" stroke="#a75c63"/>
+  <text x="860" y="625" class="nodeTitle">Publication</text>
+  <rect x="860" y="643" width="90" height="42" rx="8" fill="#172238"/><text x="876" y="668" class="nodeTitle">Snapshot</text>
+  <rect x="962" y="643" width="90" height="42" rx="8" fill="#172238"/><text x="980" y="668" class="nodeTitle">Pages</text>
+
+  <!-- edges -->
+  <path d="M463 521 C474 521 476 521 486 521" fill="none" stroke="#6da8e5" stroke-width="3"/>
+  <path d="M728 521 C738 521 741 521 751 521" fill="none" stroke="#69d3a1" stroke-width="3"/>
+  <path d="M910 570 C910 586 782 586 782 600" fill="none" stroke="#a98bea" stroke-width="3"/>
+  <path d="M818 651 C830 651 832 651 842 651" fill="none" stroke="#e0b85d" stroke-width="3"/>
+  <path d="M558 651 C569 651 571 651 582 651" fill="none" stroke="#778fa4" stroke-width="2" stroke-dasharray="7 6"/>
+
+  <!-- bottom -->
+  <rect class="panel" x="234" y="750" width="652" height="126" rx="14"/>
+  <text x="258" y="781" class="h2">Recent Architectural Changes</text>
+  <circle cx="268" cy="813" r="5" fill="#59d49b"/><text x="284" y="818" class="body">Publication integrity improved · 2h ago</text>
+  <circle cx="268" cy="846" r="5" fill="#ffc761"/><text x="284" y="851" class="body">One contract became partially observed · 1d ago</text>
+
+  <rect class="panel" x="906" y="750" width="662" height="126" rx="14"/>
+  <text x="930" y="781" class="h2">Risk and Attention</text>
+  <rect x="930" y="800" width="188" height="52" rx="9" fill="#261c29" stroke="#714354"/>
+  <text x="948" y="822" class="nodeTitle">Missing evidence</text><text x="948" y="841" class="nodeSub">2 cross-boundary contracts</text>
+  <rect x="1130" y="800" width="188" height="52" rx="9" fill="#2a261b" stroke="#71603e"/>
+  <text x="1148" y="822" class="nodeTitle">Observation gap</text><text x="1148" y="841" class="nodeSub">runtime source partial</text>
+  <rect x="1330" y="800" width="214" height="52" rx="9" fill="#172538" stroke="#355478"/>
+  <text x="1348" y="822" class="nodeTitle">Boundary pressure</text><text x="1348" y="841" class="nodeSub">low · monitored</text>
+</svg>

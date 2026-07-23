@@ -21,33 +21,17 @@
     "focus_records"
   ],
   "properties": {
-    "schema_version": {
-      "const": "sensei.dashboard.projection.v1"
-    },
-    "identity": {
-      "$ref": "#/$defs/projectionIdentity"
-    },
-    "availability": {
-      "$ref": "#/$defs/projectionAvailability"
-    },
+    "schema_version": { "const": "sensei.dashboard.projection.v1" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "availability": { "$ref": "#/$defs/projectionAvailability" },
     "assessments": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "architecture_health",
-        "projection_integrity",
-        "observation_completeness"
-      ],
+      "required": ["architecture_health", "projection_integrity", "observation_completeness"],
       "properties": {
-        "architecture_health": {
-          "$ref": "#/$defs/assessment"
-        },
-        "projection_integrity": {
-          "$ref": "#/$defs/assessment"
-        },
-        "observation_completeness": {
-          "$ref": "#/$defs/observationAssessment"
-        }
+        "architecture_health": { "$ref": "#/$defs/assessment" },
+        "projection_integrity": { "$ref": "#/$defs/assessment" },
+        "observation_completeness": { "$ref": "#/$defs/observationAssessment" }
       }
     },
     "active_context": {
@@ -68,40 +52,15 @@
       "maxItems": 24,
       "default": []
     },
-    "regions": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/region" }
-    },
-    "components": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/component" }
-    },
-    "boundaries": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/boundary" }
-    },
-    "contracts": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/contract" }
-    },
-    "flows": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/flow" }
-    },
-    "attention": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/attentionItem" }
-    },
-    "evolution": {
-      "$ref": "#/$defs/evolution"
-    },
-    "focus_records": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/focusRecord" }
-    },
-    "capabilities": {
-      "$ref": "#/$defs/capabilities"
-    }
+    "regions": { "type": "array", "items": { "$ref": "#/$defs/region" } },
+    "components": { "type": "array", "items": { "$ref": "#/$defs/component" } },
+    "boundaries": { "type": "array", "items": { "$ref": "#/$defs/boundary" } },
+    "contracts": { "type": "array", "items": { "$ref": "#/$defs/contract" } },
+    "flows": { "type": "array", "items": { "$ref": "#/$defs/flow" } },
+    "attention": { "type": "array", "items": { "$ref": "#/$defs/attentionItem" } },
+    "evolution": { "$ref": "#/$defs/evolution" },
+    "focus_records": { "type": "array", "items": { "$ref": "#/$defs/focusRecord" } },
+    "capabilities": { "$ref": "#/$defs/capabilities" }
   },
   "$defs": {
     "stableId": {
@@ -109,15 +68,11 @@
       "minLength": 1,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/#@-]*$"
     },
-    "referenceList": {
+    "refs": {
       "type": "array",
       "items": { "$ref": "#/$defs/stableId" },
       "uniqueItems": true,
       "default": []
-    },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time"
     },
     "availabilityState": {
       "type": "string",
@@ -142,24 +97,15 @@
       "type": "string",
       "enum": ["info", "low", "medium", "high", "critical", "unknown"]
     },
-    "triState": {
-      "type": "string",
-      "enum": ["yes", "no", "unknown"]
-    },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
       "required": ["evidence_refs"],
       "properties": {
-        "evidence_refs": { "$ref": "#/$defs/referenceList" },
-        "decision_refs": { "$ref": "#/$defs/referenceList" },
-        "source_refs": { "$ref": "#/$defs/referenceList" },
-        "observed_at": {
-          "oneOf": [
-            { "$ref": "#/$defs/timestamp" },
-            { "type": "null" }
-          ]
-        },
+        "evidence_refs": { "$ref": "#/$defs/refs" },
+        "decision_refs": { "$ref": "#/$defs/refs" },
+        "source_refs": { "$ref": "#/$defs/refs" },
+        "observed_at": { "type": ["string", "null"], "format": "date-time" },
         "limitations": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
@@ -167,16 +113,10 @@
         }
       }
     },
-    "projectionIdentity": {
+    "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "projection_id",
-        "repository",
-        "revision",
-        "graph_authority",
-        "generated_at"
-      ],
+      "required": ["projection_id", "repository", "revision", "graph_authority", "generated_at"],
       "properties": {
         "projection_id": { "$ref": "#/$defs/stableId" },
         "repository": {
@@ -198,12 +138,7 @@
             "id": { "$ref": "#/$defs/stableId" },
             "display": { "type": ["string", "null"] },
             "ref": { "type": ["string", "null"] },
-            "committed_at": {
-              "oneOf": [
-                { "$ref": "#/$defs/timestamp" },
-                { "type": "null" }
-              ]
-            }
+            "committed_at": { "type": ["string", "null"], "format": "date-time" }
           }
         },
         "graph_authority": {
@@ -212,13 +147,13 @@
           "required": ["observed", "current", "identity", "summary"],
           "properties": {
             "observed": { "type": "boolean" },
-            "current": { "$ref": "#/$defs/triState" },
+            "current": { "type": "string", "enum": ["yes", "no", "unknown"] },
             "identity": { "type": ["string", "null"] },
             "summary": { "type": "string", "minLength": 1 },
             "provenance": { "$ref": "#/$defs/provenance" }
           }
         },
-        "generated_at": { "$ref": "#/$defs/timestamp" }
+        "generated_at": { "type": "string", "format": "date-time" }
       }
     },
     "sourceState": {
@@ -243,69 +178,58 @@
       "properties": {
         "state": { "$ref": "#/$defs/availabilityState" },
         "summary": { "type": "string", "minLength": 1 },
-        "limitations": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "sources": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/sourceState" }
-        }
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/sourceState" } }
       }
     },
     "assessment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "label", "summary", "provenance"],
+      "required": ["state", "label", "summary", "severity", "provenance"],
       "properties": {
         "state": { "$ref": "#/$defs/knowledgeState" },
         "label": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
-        "score": {
-          "description": "Optional owner-defined score. Omit or use null when Sensei has not defined a score with explicit semantics.",
-          "type": ["number", "null"]
-        },
-        "score_scale": {
-          "description": "Human-readable owner-defined score scale, required by convention whenever score is non-null.",
-          "type": ["string", "null"]
-        },
         "severity": { "$ref": "#/$defs/severity" },
+        "score": { "type": ["number", "null"] },
+        "score_scale": { "type": ["string", "null"] },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
     "observationAssessment": {
-      "allOf": [
-        { "$ref": "#/$defs/assessment" },
-        {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "label", "summary", "severity", "coverage", "provenance"],
+      "properties": {
+        "state": { "$ref": "#/$defs/knowledgeState" },
+        "label": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "severity": { "$ref": "#/$defs/severity" },
+        "score": { "type": ["number", "null"] },
+        "score_scale": { "type": ["string", "null"] },
+        "coverage": {
           "type": "object",
+          "additionalProperties": false,
+          "required": ["observed", "total", "unit"],
           "properties": {
-            "coverage": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["observed", "total", "unit"],
-              "properties": {
-                "observed": { "type": ["integer", "null"], "minimum": 0 },
-                "total": { "type": ["integer", "null"], "minimum": 0 },
-                "unit": { "type": "string", "minLength": 1 }
-              }
-            }
+            "observed": { "type": ["integer", "null"], "minimum": 0 },
+            "total": { "type": ["integer", "null"], "minimum": 0 },
+            "unit": { "type": "string", "minLength": 1 }
           }
-        }
-      ]
+        },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
     },
     "activeContext": {
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "id", "label"],
       "properties": {
-        "kind": {
-          "type": "string",
-          "enum": ["task", "pull_request", "change", "session"]
-        },
+        "kind": { "type": "string", "enum": ["task", "pull_request", "change", "session"] },
         "id": { "$ref": "#/$defs/stableId" },
         "label": { "type": "string", "minLength": 1 },
         "url": { "type": ["string", "null"], "format": "uri" },
-        "element_refs": { "$ref": "#/$defs/referenceList" }
+        "element_refs": { "$ref": "#/$defs/refs" }
       }
     },
     "briefingStatement": {
@@ -314,13 +238,10 @@
       "required": ["id", "kind", "text", "severity", "element_refs", "provenance"],
       "properties": {
         "id": { "$ref": "#/$defs/stableId" },
-        "kind": {
-          "type": "string",
-          "enum": ["orientation", "health", "integrity", "observation", "change", "attention"]
-        },
+        "kind": { "type": "string", "enum": ["orientation", "health", "integrity", "observation", "change", "attention"] },
         "text": { "type": "string", "minLength": 1 },
         "severity": { "$ref": "#/$defs/severity" },
-        "element_refs": { "$ref": "#/$defs/referenceList" },
+        "element_refs": { "$ref": "#/$defs/refs" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -334,7 +255,7 @@
         "value": { "type": ["string", "number", "integer", "null"] },
         "unit": { "type": ["string", "null"] },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "element_refs": { "$ref": "#/$defs/referenceList" }
+        "element_refs": { "$ref": "#/$defs/refs" }
       }
     },
     "visualAnchor": {
@@ -357,7 +278,7 @@
         "responsibility": { "type": "string", "minLength": 1 },
         "state": { "$ref": "#/$defs/knowledgeState" },
         "importance": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
-        "component_refs": { "$ref": "#/$defs/referenceList" },
+        "component_refs": { "$ref": "#/$defs/refs" },
         "visual_anchor": { "$ref": "#/$defs/visualAnchor" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
@@ -373,7 +294,7 @@
         "responsibility": { "type": "string", "minLength": 1 },
         "state": { "$ref": "#/$defs/knowledgeState" },
         "importance": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
-        "authority_refs": { "$ref": "#/$defs/referenceList" },
+        "authority_refs": { "$ref": "#/$defs/refs" },
         "visual_anchor": { "$ref": "#/$defs/visualAnchor" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
@@ -385,11 +306,8 @@
       "properties": {
         "id": { "$ref": "#/$defs/stableId" },
         "name": { "type": "string", "minLength": 1 },
-        "kind": {
-          "type": "string",
-          "enum": ["authority", "ownership", "domain", "trust", "deployment", "other"]
-        },
-        "member_refs": { "$ref": "#/$defs/referenceList" },
+        "kind": { "type": "string", "enum": ["authority", "ownership", "domain", "trust", "deployment", "other"] },
+        "member_refs": { "$ref": "#/$defs/refs" },
         "state": { "$ref": "#/$defs/knowledgeState" },
         "summary": { "type": "string", "minLength": 1 },
         "provenance": { "$ref": "#/$defs/provenance" }
@@ -405,13 +323,10 @@
         "source_ref": { "$ref": "#/$defs/stableId" },
         "target_ref": { "$ref": "#/$defs/stableId" },
         "kind": { "type": "string", "minLength": 1 },
-        "direction": {
-          "type": "string",
-          "enum": ["source_to_target", "target_to_source", "bidirectional", "undirected"]
-        },
+        "direction": { "type": "string", "enum": ["source_to_target", "target_to_source", "bidirectional", "undirected"] },
         "state": { "$ref": "#/$defs/knowledgeState" },
         "summary": { "type": "string", "minLength": 1 },
-        "boundary_refs": { "$ref": "#/$defs/referenceList" },
+        "boundary_refs": { "$ref": "#/$defs/refs" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -438,16 +353,9 @@
       "properties": {
         "id": { "$ref": "#/$defs/stableId" },
         "name": { "type": "string", "minLength": 1 },
-        "kind": {
-          "type": "string",
-          "enum": ["command", "query", "event", "data", "publication", "governance", "other"]
-        },
+        "kind": { "type": "string", "enum": ["command", "query", "event", "data", "publication", "governance", "other"] },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "steps": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/flowStep" },
-          "minItems": 1
-        },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/flowStep" }, "minItems": 1 },
         "summary": { "type": "string", "minLength": 1 },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
@@ -460,24 +368,13 @@
         "id": { "$ref": "#/$defs/stableId" },
         "kind": {
           "type": "string",
-          "enum": [
-            "contradiction",
-            "question",
-            "missing_evidence",
-            "stale_evidence",
-            "boundary_pressure",
-            "failure_mode",
-            "forbidden_move",
-            "integrity",
-            "observation_gap",
-            "other"
-          ]
+          "enum": ["contradiction", "question", "missing_evidence", "stale_evidence", "boundary_pressure", "failure_mode", "forbidden_move", "integrity", "observation_gap", "other"]
         },
         "title": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
         "severity": { "$ref": "#/$defs/severity" },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "element_refs": { "$ref": "#/$defs/referenceList" },
+        "element_refs": { "$ref": "#/$defs/refs" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -490,37 +387,17 @@
         "kind": {
           "type": "string",
           "enum": [
-            "region_added",
-            "region_removed",
-            "component_added",
-            "component_removed",
-            "component_moved",
-            "responsibility_changed",
-            "authority_changed",
-            "boundary_added",
-            "boundary_removed",
-            "boundary_changed",
-            "contract_added",
-            "contract_removed",
-            "contract_changed",
-            "flow_changed",
-            "evidence_improved",
-            "evidence_degraded",
-            "question_opened",
-            "question_resolved",
-            "contradiction_introduced",
-            "contradiction_resolved",
-            "observation_changed",
-            "other"
+            "region_added", "region_removed", "component_added", "component_removed", "component_moved",
+            "responsibility_changed", "authority_changed", "boundary_added", "boundary_removed", "boundary_changed",
+            "contract_added", "contract_removed", "contract_changed", "flow_changed", "evidence_improved",
+            "evidence_degraded", "question_opened", "question_resolved", "contradiction_introduced",
+            "contradiction_resolved", "observation_changed", "other"
           ]
         },
         "title": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
-        "impact": {
-          "type": "string",
-          "enum": ["improved", "degraded", "changed", "unknown"]
-        },
-        "element_refs": { "$ref": "#/$defs/referenceList" },
+        "impact": { "type": "string", "enum": ["improved", "degraded", "changed", "unknown"] },
+        "element_refs": { "$ref": "#/$defs/refs" },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -533,49 +410,30 @@
         "base_revision": { "type": ["string", "null"] },
         "head_revision": { "$ref": "#/$defs/stableId" },
         "summary": { "type": ["string", "null"] },
-        "limitations": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "default": []
-        },
-        "changes": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/change" }
-        }
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] },
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/change" } }
       }
     },
     "focusRecord": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "element_ref",
-        "element_kind",
-        "name",
-        "responsibility",
-        "state",
-        "owner_refs",
-        "contract_refs",
-        "flow_refs",
-        "attention_refs",
-        "decision_refs",
-        "provenance"
+        "element_ref", "element_kind", "name", "responsibility", "state", "owner_refs",
+        "contract_refs", "flow_refs", "attention_refs", "decision_refs", "provenance"
       ],
       "properties": {
         "element_ref": { "$ref": "#/$defs/stableId" },
-        "element_kind": {
-          "type": "string",
-          "enum": ["region", "component", "boundary", "contract", "flow", "attention"]
-        },
+        "element_kind": { "type": "string", "enum": ["region", "component", "boundary", "contract", "flow", "attention"] },
         "name": { "type": "string", "minLength": 1 },
         "responsibility": { "type": "string", "minLength": 1 },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "owner_refs": { "$ref": "#/$defs/referenceList" },
-        "owned_refs": { "$ref": "#/$defs/referenceList" },
-        "contract_refs": { "$ref": "#/$defs/referenceList" },
-        "flow_refs": { "$ref": "#/$defs/referenceList" },
-        "attention_refs": { "$ref": "#/$defs/referenceList" },
-        "decision_refs": { "$ref": "#/$defs/referenceList" },
-        "recent_change_refs": { "$ref": "#/$defs/referenceList" },
+        "owner_refs": { "$ref": "#/$defs/refs" },
+        "owned_refs": { "$ref": "#/$defs/refs" },
+        "contract_refs": { "$ref": "#/$defs/refs" },
+        "flow_refs": { "$ref": "#/$defs/refs" },
+        "attention_refs": { "$ref": "#/$defs/refs" },
+        "decision_refs": { "$ref": "#/$defs/refs" },
+        "recent_change_refs": { "$ref": "#/$defs/refs" },
         "source_links": {
           "type": "array",
           "items": {

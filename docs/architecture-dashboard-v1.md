@@ -177,9 +177,9 @@ It contains:
 - important behavioral or data flows
 - optional risk, confidence, change, and closure overlays
 
-The layout must be stable and deterministic for the same projection identity. Users should be able to develop spatial memory of the system.
+Spatial stability is a required application outcome: for the same projection identity, repeated renders must place the same elements in the same places so users can develop spatial memory of the system. The projection's `visual_anchor` (`order`, `lane`, `group`) supplies stable owner hints only; it is not by itself a layout algorithm or a proof of edge-crossing-free rendering. The deterministic layout/routing algorithm that turns those hints into a stable picture is a dashboard-side Stage 4 contract, not a property the projection schema proves on its own.
 
-A component's visual prominence must not be based only on raw artifact count. Sensei may provide importance, criticality, centrality, or attention metadata with explicit semantics.
+A component's visual prominence must not be based on raw artifact count or on any unowned numeric metric. V1 does not carry an `importance`, criticality, or centrality score. If Sensei later wants to drive visual prominence from a metric, that metric returns only under a separately defined contract with an explicit owner, scale, evidence, and rendering semantics — not as a bare number on the region or component.
 
 The map must avoid:
 
@@ -211,6 +211,8 @@ Selecting an element opens a Focus panel or route containing:
 
 Focus stops before source-level browsing becomes an IDE task. Source references may be linked, but the dashboard does not become a file tree or symbol explorer.
 
+Referential integrity between selectable elements and Focus is mandatory: every selectable region, component, boundary, contract, and flow must resolve to exactly one `focus_records` entry with the same stable identifier and matching kind. A duplicate or missing focus record for a selectable element is a projection-integrity failure to be detected by the producer/validator, not something the frontend repairs. If a selected element has no matching focus record, the dashboard must present it as unavailable with the integrity diagnostic — it must never fabricate a fallback description. An attention item needs its own focus record only when it is explicitly declared selectable; otherwise it may still be deep-linked to the architectural elements it references.
+
 ### 6.4 Evolution
 
 **Goal:** Show what the architecture became, not merely what files changed.
@@ -234,7 +236,7 @@ Raw commit or file churn may be linked as evidence but is not the primary delta 
 
 **Goal:** Give the agent enough grounded context to continue the user's current architectural investigation.
 
-The dashboard creates a bounded request containing only projection data and references already supplied by Sensei:
+The dashboard creates a bounded request containing only projection data and references already supplied by Sensei. This request has its own owned contract, `agent-handoff-v1.schema.json`, kept separate from the immutable `dashboard-projection-v1` document because it is a mutable, per-interaction envelope rather than authoritative projection state. It binds:
 
 - repository identity
 - revision identity
@@ -242,12 +244,13 @@ The dashboard creates a bounded request containing only projection data and refe
 - selected element identifier and kind
 - current lens
 - current route and visible concern
-- attention item identifiers
-- contract, boundary, flow, evidence, and decision identifiers
-- optional active task or PR binding
+- attention, contract, boundary, flow, evidence, and decision identifiers
+- optional active task or PR binding, subject to the same public-snapshot redaction rule as the projection's `active_context` (session context is never published; task/PR context is omitted unless every included field is explicitly marked public)
 - requested intent such as explain, review, compare, or propose
+- observation limitations carried forward from the source projection
+- a `read_only` or `propose` capability marking whether the agent may only investigate or may also prepare a governed-change proposal
 
-The handoff must not claim that visible evidence is exhaustive when observation is partial.
+The dashboard may populate this envelope only from validated projection fields and explicit user input; it must not invent or infer architectural fields when constructing it. The handoff must not claim that visible evidence is exhaustive when observation is partial.
 
 The generic product label should be **Ask Agent** or **Ask Sensei**. A concrete integration may display **Ask Claude** when Claude is the configured agent.
 
@@ -323,7 +326,7 @@ A partial projection must identify limitations. An unavailable projection must n
 
 ### 8.5 Confidence
 
-V1 must not introduce an additional generic confidence score unless Sensei defines its precise meaning, owner, evidence, and relationship to the four concepts above.
+V1 renders owner-produced states, explanations, severity, evidence, and coverage counts only. The projection schema carries no generic numeric score or confidence field. V1 must not introduce one unless Sensei defines its precise meaning, owner, evidence, and relationship to the four concepts above, at which point it returns under a separately versioned, explicitly scoped contract — not as a bare number reused across unrelated objects.
 
 ## 9. Status representation
 
@@ -337,7 +340,7 @@ Every status-bearing object must support:
 - observed-at or revision binding
 - unavailable or unknown state
 
-Unknown is never equivalent to healthy, satisfied, or absent.
+Unknown is never equivalent to healthy, satisfied, or absent. Severity additionally distinguishes `unknown` (a rating is meaningful but not known) from `not_applicable` (no rating is meaningful for this object, such as a healthy or proven assessment) — the two must not be conflated or rendered identically.
 
 Color is supportive, not sufficient. Icons, labels, line styles, and text must preserve meaning for color-blind users and monochrome captures.
 
@@ -355,10 +358,13 @@ Required properties:
 - declared availability and limitations
 - human-scale bounded collections
 - explicit references rather than duplicated contradictory facts
-- extension points for future fields
 - no dependence on raw triples in the frontend
 
-The initial JSON Schema is defined in `dashboard-projection-v1.schema.json`.
+Schema evolution is strict and versioned, not open-ended. `schema_version` is a constant, and every object in the schema rejects unrecognized properties. Any field addition, removal, renamed token, or semantic change produces a new schema identifier/version rather than silently extending the current one. A consumer must reject a projection whose `schema_version` it does not exactly recognize rather than partially interpret it.
+
+`globulario/sensei` is the canonical producer authority for this contract once it adopts it; until that adoption lands, the schema in this repository is the proposed handshake contract, not an independent competing authority. `globulario/sensei-dashboard` keeps a generated/pinned consumer mirror of the adopted schema, and dashboard CI verifies byte/digest parity against the pinned canonical schema before accepting fixtures or generated TypeScript types.
+
+The initial JSON Schema is defined in `dashboard-projection-v1.schema.json`. The separate agent-handoff request envelope is defined in `agent-handoff-v1.schema.json` (see §6.5).
 
 ## 11. Data modes
 
@@ -378,7 +384,9 @@ Capabilities may include:
 
 The same application loads immutable generated JSON files, suitable for GitHub Pages.
 
-Static mode is read-only and must not display controls that require a live backend.
+Static mode is read-only and must not display controls that require a live backend. `capabilities.agent_handoff` distinguishes this precisely: `none` shows no handoff affordance, `export` may be offered in static mode because it only creates or copies a read-only handoff envelope without a live backend, and `live` (a configured agent transport) must never be reported by a static snapshot. Neither `export` nor `live` implies mutation authority.
+
+A public static snapshot redacts `active_context` by default: `session` context is never published, and `task`/`pull_request` context is omitted unless the producer has explicitly marked every included field public and bound it to a public URL. The safe default for public static generation is `active_context: null`. The frontend does not decide what is safe to publish.
 
 ### Editor deep link
 

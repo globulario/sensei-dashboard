@@ -21,6 +21,7 @@ The project is currently in its design-contract phase. No frontend framework has
 
 - [Dashboard V1 product and semantic contract](docs/architecture-dashboard-v1.md)
 - [Dashboard Projection V1 JSON Schema](docs/dashboard-projection-v1.schema.json)
+- [Agent Handoff V1 JSON Schema](docs/agent-handoff-v1.schema.json)
 - [Claude Stage 1 implementation brief](docs/claude-stage-1-brief.md)
 - [Tracking issue #1](https://github.com/globulario/sensei-dashboard/issues/1)
 

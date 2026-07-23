@@ -24,6 +24,8 @@ Treat those documents as requirements, not mood boards.
 
 Before implementation, obtain at least one accepted `sensei.dashboard.projection.v1` fixture produced or approved by the Sensei core contract.
 
+`globulario/sensei` is the canonical producer authority for `dashboard-projection-v1.schema.json` once it adopts this contract. Until that adoption lands, the schema in this repository is the proposed handshake, not an independent competing authority — do not treat a locally invented fixture shape as settling ambiguity the schema itself leaves open.
+
 Do not invent production architectural data merely to fill the screen. A deliberately labeled synthetic test fixture is acceptable for isolated component tests, but the development application must default to an accepted repository projection fixture.
 
 ## Deliverables
@@ -90,7 +92,7 @@ Build only the structural shell required to prove the architecture:
 - optional Focus region
 - application-level loading and unavailable states
 
-Use restrained placeholder components for future Overview, Map, Focus, and Evolution content. Placeholders must identify the missing stage and must not show invented health scores or fake architecture.
+Use restrained placeholder components for future Overview, Map, Focus, and Evolution content. Placeholders must identify the missing stage and must not show invented health scores, importance rankings, or fake architecture.
 
 ### 6. Honest states
 
@@ -147,6 +149,7 @@ Do not implement in this stage:
 - health, integrity, completeness, or availability calculations
 - raw RDF, SPARQL, or artifact interpretation
 - agent execution
+- agent handoff envelope generation (see `agent-handoff-v1.schema.json`; this is Stage 3 scope)
 - mutation controls
 - Tauri packaging
 - VS Code webview embedding

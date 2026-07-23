@@ -3,6 +3,7 @@
   "$id": "https://globulario.github.io/sensei-dashboard/schema/dashboard-projection-v1.json",
   "title": "Sensei Dashboard Projection V1",
   "description": "A versioned, human-scale architectural projection produced by Sensei core and rendered by Sensei Dashboard.",
+  "$comment": "schema_version is a const, not a range: any field addition, removal, rename, or semantic change requires a new schema identifier/version. A consumer must reject a projection whose schema_version it does not exactly recognize rather than partially interpret it. Canonical ownership: globulario/sensei is the producer authority once it adopts this contract; until that adoption lands, this file is the proposed handshake, not an independent competing authority. globulario/sensei-dashboard keeps a generated/pinned consumer mirror and verifies digest parity in CI.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -95,7 +96,12 @@
     },
     "severity": {
       "type": "string",
-      "enum": ["info", "low", "medium", "high", "critical", "unknown"]
+      "enum": ["info", "low", "medium", "high", "critical", "unknown", "not_applicable"],
+      "$comment": "not_applicable is for objects (e.g. a healthy/proven assessment) where no rating is meaningful. unknown is reserved for cases where a rating is meaningful but not known."
+    },
+    "triState": {
+      "type": "string",
+      "enum": ["yes", "no", "unknown"]
     },
     "provenance": {
       "type": "object",
@@ -146,8 +152,8 @@
           "additionalProperties": false,
           "required": ["observed", "current", "identity", "summary"],
           "properties": {
-            "observed": { "type": "boolean" },
-            "current": { "type": "string", "enum": ["yes", "no", "unknown"] },
+            "observed": { "$ref": "#/$defs/triState", "$comment": "whether authority state was observed at all; absence of observation can itself be unknown, so this is tri-state rather than boolean" },
+            "current": { "$ref": "#/$defs/triState" },
             "identity": { "type": ["string", "null"] },
             "summary": { "type": "string", "minLength": 1 },
             "provenance": { "$ref": "#/$defs/provenance" }
@@ -186,13 +192,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["state", "label", "summary", "severity", "provenance"],
+      "$comment": "V1 renders owner-produced states, explanations, severity, evidence, and coverage counts only. No unowned numeric score is included; a future metric may return only under a separately defined contract with owner, scale, evidence, and intended rendering semantics.",
       "properties": {
         "state": { "$ref": "#/$defs/knowledgeState" },
         "label": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
         "severity": { "$ref": "#/$defs/severity" },
-        "score": { "type": ["number", "null"] },
-        "score_scale": { "type": ["string", "null"] },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -205,8 +210,6 @@
         "label": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
         "severity": { "$ref": "#/$defs/severity" },
-        "score": { "type": ["number", "null"] },
-        "score_scale": { "type": ["string", "null"] },
         "coverage": {
           "type": "object",
           "additionalProperties": false,
@@ -224,6 +227,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "id", "label"],
+      "$comment": "Public static snapshots redact active_context by default: 'session' context must never be published, and 'task'/'pull_request' context must be omitted unless the producer has explicitly marked every included field public and bound it to a public URL. The frontend does not decide what is safe to publish; the safe default for public static generation is active_context: null (see top-level 'active_context').",
       "properties": {
         "kind": { "type": "string", "enum": ["task", "pull_request", "change", "session"] },
         "id": { "$ref": "#/$defs/stableId" },
@@ -262,6 +266,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["order"],
+      "$comment": "Stable owner hints only (author-declared placement, not a computed layout). This does not by itself guarantee deterministic, edge-crossing-free rendering — the layout/routing algorithm and its determinism guarantee are a dashboard-side Stage 4 contract, not a property proven by this schema.",
       "properties": {
         "order": { "type": "integer", "minimum": 0 },
         "lane": { "type": ["string", "null"] },
@@ -277,7 +282,6 @@
         "name": { "type": "string", "minLength": 1 },
         "responsibility": { "type": "string", "minLength": 1 },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "importance": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
         "component_refs": { "$ref": "#/$defs/refs" },
         "visual_anchor": { "$ref": "#/$defs/visualAnchor" },
         "provenance": { "$ref": "#/$defs/provenance" }
@@ -293,7 +297,6 @@
         "region_ref": { "$ref": "#/$defs/stableId" },
         "responsibility": { "type": "string", "minLength": 1 },
         "state": { "$ref": "#/$defs/knowledgeState" },
-        "importance": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
         "authority_refs": { "$ref": "#/$defs/refs" },
         "visual_anchor": { "$ref": "#/$defs/visualAnchor" },
         "provenance": { "$ref": "#/$defs/provenance" }
@@ -375,6 +378,11 @@
         "severity": { "$ref": "#/$defs/severity" },
         "state": { "$ref": "#/$defs/knowledgeState" },
         "element_refs": { "$ref": "#/$defs/refs" },
+        "selectable": {
+          "type": "boolean",
+          "default": false,
+          "$comment": "An attention item may deep-link to a referenced architectural element without being independently focusable. It requires its own matching focus_records entry only when selectable is true."
+        },
         "provenance": { "$ref": "#/$defs/provenance" }
       }
     },
@@ -407,7 +415,13 @@
       "required": ["availability", "base_revision", "head_revision", "changes"],
       "properties": {
         "availability": { "$ref": "#/$defs/availabilityState" },
-        "base_revision": { "type": ["string", "null"] },
+        "base_revision": {
+          "oneOf": [
+            { "$ref": "#/$defs/stableId" },
+            { "type": "null" }
+          ],
+          "$comment": "null when there is no prior authoritative revision to compare against (e.g. the first observed revision)."
+        },
         "head_revision": { "$ref": "#/$defs/stableId" },
         "summary": { "type": ["string", "null"] },
         "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] },
@@ -417,6 +431,7 @@
     "focusRecord": {
       "type": "object",
       "additionalProperties": false,
+      "$comment": "Referential integrity is mandatory: every selectable region, component, boundary, contract, and flow must resolve to exactly one focus_records entry with the same stable id and matching element_kind. Duplicate or missing focus records for a selectable element are a projection-integrity failure to be detected by the producer/validator, not repaired by the frontend. The frontend must not fabricate a fallback description; it may only present the element as unavailable with the integrity diagnostic. An attentionItem needs a focus_records entry only when its own selectable flag is true.",
       "required": [
         "element_ref", "element_kind", "name", "responsibility", "state", "owner_refs",
         "contract_refs", "flow_refs", "attention_refs", "decision_refs", "provenance"
@@ -456,7 +471,12 @@
       "properties": {
         "live_refresh": { "type": "boolean", "default": false },
         "revision_compare": { "type": "boolean", "default": false },
-        "agent_handoff": { "type": "boolean", "default": false },
+        "agent_handoff": {
+          "type": "string",
+          "enum": ["none", "export", "live"],
+          "default": "none",
+          "$comment": "none: no handoff affordance. export: a read-only handoff envelope (see agent-handoff-v1.schema.json) may be created/copied without a live backend, so this may be true in static mode. live: a configured agent transport exists. Static mode must never report 'live', and neither value implies mutation authority."
+        },
         "source_deep_links": { "type": "boolean", "default": false }
       },
       "default": {}

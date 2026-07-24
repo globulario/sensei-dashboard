@@ -64,6 +64,11 @@ export class Shell {
     this.#mainEl = document.createElement("main");
     this.#mainEl.className = "shell-main";
     this.#mainEl.setAttribute("id", "main-content");
+    // Programmatically focusable (not in the Tab order) so route changes
+    // can move keyboard/screen-reader focus onto the new content instead of
+    // leaving it on a now-stale nav link (claude-stage-3-brief.md §5:
+    // "focus movement on route changes is deliberate").
+    this.#mainEl.setAttribute("tabindex", "-1");
     this.#root.appendChild(this.#mainEl);
   }
 
@@ -127,6 +132,7 @@ export class Shell {
     this.#renderIdentity(outcome);
 
     if (renderNonAvailableState(this.#mainEl, outcome)) {
+      this.#focusMain();
       return;
     }
 
@@ -134,12 +140,15 @@ export class Shell {
     switch (route.name) {
       case "overview":
         renderOverview(this.#mainEl, projection);
+        this.#focusMain();
         return;
       case "map":
         renderMap(this.#mainEl, projection);
+        this.#focusMain();
         return;
       case "evolution":
         renderEvolution(this.#mainEl, projection);
+        this.#focusMain();
         return;
       case "element": {
         renderNonAvailableState(this.#mainEl, { status: "loading" });
@@ -149,12 +158,21 @@ export class Shell {
         // check — not a route-name comparison — is what actually prevents
         // element A's slower response from overwriting element B's.
         if (generation !== this.#renderGeneration) return;
-        renderFocus(this.#mainEl, focusOutcome);
+        renderFocus(this.#mainEl, focusOutcome, projection);
+        this.#focusMain();
         return;
       }
       case "not_found":
         renderNotFoundRoute(this.#mainEl, route.path);
+        this.#focusMain();
         return;
     }
+  }
+
+  /** Moves focus to the freshly rendered main content after a route change
+   * completes, so keyboard/screen-reader users land on the new view instead
+   * of a stale nav link (claude-stage-3-brief.md §5). */
+  #focusMain(): void {
+    this.#mainEl.focus({ preventScroll: true });
   }
 }

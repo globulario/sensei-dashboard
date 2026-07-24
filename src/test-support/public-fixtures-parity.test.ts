@@ -11,12 +11,22 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const FIXTURES = ["real-repo", "partial", "unavailable", "contested", "evolution-first-revision", "public-redacted"];
+const INVALID_FIXTURES = ["invalid/missing-focus-record", "invalid/duplicate-focus-record"];
 
 describe("public/fixtures mirrors docs/fixtures byte-for-byte", () => {
   for (const name of FIXTURES) {
     it(`${name}/projection.json is identical in both locations`, async () => {
       const docsPath = path.join(repoRoot, "docs", "fixtures", "dashboard-projection", "v1", name, "projection.json");
       const publicPath = path.join(repoRoot, "public", "fixtures", "dashboard-projection", "v1", name, "projection.json");
+      const [docs, pub] = await Promise.all([readFile(docsPath, "utf8"), readFile(publicPath, "utf8")]);
+      expect(pub).toBe(docs);
+    });
+  }
+
+  for (const name of INVALID_FIXTURES) {
+    it(`${name}.json is identical in both locations`, async () => {
+      const docsPath = path.join(repoRoot, "docs", "fixtures", "dashboard-projection", "v1", `${name}.json`);
+      const publicPath = path.join(repoRoot, "public", "fixtures", "dashboard-projection", "v1", `${name}.json`);
       const [docs, pub] = await Promise.all([readFile(docsPath, "utf8"), readFile(publicPath, "utf8")]);
       expect(pub).toBe(docs);
     });

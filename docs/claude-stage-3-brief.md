@@ -4,7 +4,7 @@
 **Target repository:** `globulario/sensei-dashboard`  
 **Target branch:** `feat/dashboard-stage-3-overview-focus`  
 **Base branch:** `main`  
-**Base SHA:** `BASE_SHA_TO_BE_PINNED_AFTER_PR_CREATION`  
+**Base SHA:** `62b4770330beaa41be2919f1a41b7368b86e85e8`  
 **Architect role:** GPT defines and reviews the contract.  
 **Implementer role:** Claude implements, tests, pushes, waits for CI, and stops for review.
 

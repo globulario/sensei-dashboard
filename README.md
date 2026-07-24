@@ -8,20 +8,25 @@ Sensei Dashboard presents repository structure, authority, contracts, risk, evid
 
 ## Product boundary
 
-- **Sensei core** constructs and owns architectural truth: canonical projections, assessment semantics, revision comparison, snapshots, and live APIs.
-- **Sensei Dashboard** communicates that truth through a standalone web application.
-- **Agents** explain, investigate, propose, and act from grounded dashboard context.
+- **Sensei core** constructs and owns architectural truth: canonical projections, assessment semantics, revision comparison, snapshots, live APIs, workspace identity, and governed admission.
+- **Sensei Dashboard** communicates that truth through a standalone web application and, in local mode, provides the human interface for architectural discussion and governed work orchestration.
+- **`sensei-runner`** is the planned local execution boundary for provider authentication, exact-SHA worktrees, Sensei MCP verification, agent execution, GitHub operations, and evidence receipts.
+- **The primary AI architect** explains, plans, writes contracts, prepares GitHub work, and reviews exact implementation SHAs.
+- **Worker agents** such as Claude Code, Codex, and Antigravity investigate or implement bounded admitted jobs.
+- **The human maintainer** retains final architectural decisions and merge authority.
 - **Editor integrations** remain thin contextual bridges into the dashboard.
 
-The dashboard must never infer architectural meaning from raw RDF, artifact counts, or frontend heuristics. It renders an owner-produced, versioned projection.
+The dashboard must never infer architectural meaning from raw RDF, artifact counts, or frontend heuristics. It renders an owner-produced, versioned projection. Provider authentication never replaces Sensei workspace admission.
 
 ## Design contract
 
 - [Dashboard V1 product and semantic contract](docs/architecture-dashboard-v1.md)
+- [AI Architecture Workspace V1 extension](docs/architecture-workspace-v1.md)
 - [Dashboard Projection V1 JSON Schema](docs/dashboard-projection-v1.schema.json)
 - [Agent Handoff V1 JSON Schema](docs/agent-handoff-v1.schema.json)
 - [Claude Stage 1 implementation brief](docs/claude-stage-1-brief.md)
-- [Tracking issue #1](https://github.com/globulario/sensei-dashboard/issues/1)
+- [Dashboard V1 tracking issue #1](https://github.com/globulario/sensei-dashboard/issues/1)
+- [AI architecture workspace tracking issue #7](https://github.com/globulario/sensei-dashboard/issues/7)
 
 ## Contract tooling
 
@@ -76,11 +81,20 @@ transport.
 
 ## Planned product shape
 
-The canonical interface will be a standalone TypeScript web application built with Vite. The same application will support:
+The canonical interface remains a standalone TypeScript web application. The same application will support:
 
 - live local mode through Sensei
 - immutable static snapshot mode for GitHub Pages
 - deep links from lightweight editor integrations
-- optional desktop packaging later, after the web application is proven
+- optional local desktop packaging through Tauri after the web and contract boundaries are proven
 
-The implementation sequence is contract and fixtures, application shell, Overview and Focus, Architecture Map, then Evolution and integrations.
+The local/Tauri product will add a separate `sensei-runner` boundary rather than placing shell or credential authority inside the webview. Through that runner, the Dashboard will support:
+
+- a persistent OpenAI primary architect authenticated with a regular ChatGPT account through Codex app-server
+- checkout-bound Sensei MCP verification for the architect and every worker
+- deterministic Sensei initialization for repositories that are not yet governed
+- governed GitHub issue, draft-PR, review, CI, and exact-SHA workflows
+- isolated worktrees and admitted runs using Claude Code, Codex, or Antigravity
+- explicit operator approvals, evidence receipts, and human-only merge authority
+
+The implementation sequence remains contract-first. The current observatory stages continue through Overview, Focus, deterministic Architecture Map, and Evolution. The AI architecture workspace is introduced beside them through bounded orchestration phases defined in [`docs/architecture-workspace-v1.md`](docs/architecture-workspace-v1.md); it does not interrupt or rewrite the active map work.

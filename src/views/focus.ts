@@ -2,9 +2,16 @@
 // stable element id against the current projection's focus_records. An id
 // with no matching record is an honest "unknown deep-linked element" state
 // (claude-stage-1-brief.md §6), not a fabricated fallback description.
+//
+// This renderer is synchronous and takes an already-resolved FocusOutcome —
+// Shell owns the async loadFocusRecord() call and the stale-response guard
+// around it (see shell.ts's #renderGeneration). A view doing its own
+// awaiting here was the root cause of a real race: two overlapping
+// /element/:id navigations both call this function, and whichever fetch
+// resolved last used to win regardless of which navigation was more
+// recent.
 
-import type { SenseiDashboardProjectionV1 } from "../../contract/generated/dashboard-projection-v1.js";
-import type { ProjectionAdapter } from "../adapter/types.js";
+import type { FocusOutcome } from "../adapter/types.js";
 import { renderUnknownElement } from "../state/render-states.js";
 
 function refList(label: string, refs: string[]): HTMLElement | null {
@@ -25,36 +32,30 @@ function refList(label: string, refs: string[]): HTMLElement | null {
   return wrapper;
 }
 
-export async function renderFocus(
-  container: HTMLElement,
-  _projection: SenseiDashboardProjectionV1,
-  adapter: ProjectionAdapter,
-  elementId: string
-): Promise<void> {
+export function renderFocus(container: HTMLElement, outcome: FocusOutcome): void {
   container.replaceChildren();
   const heading = document.createElement("h1");
   heading.textContent = "Focus";
   container.appendChild(heading);
 
-  const loadingNote = document.createElement("p");
-  loadingNote.className = "state-block state-block--loading";
-  loadingNote.textContent = "Loading focus record…";
-  container.appendChild(loadingNote);
-
-  const outcome = await adapter.loadFocusRecord(elementId);
-  container.replaceChildren(heading);
-
-  if (outcome.status === "loading") return;
-  if (outcome.status === "not_found") {
-    renderUnknownElement(container, outcome.elementId);
-    return;
-  }
-  if (outcome.status === "unavailable") {
-    const note = document.createElement("p");
-    note.className = "state-block state-block--unavailable";
-    note.textContent = outcome.reason;
-    container.appendChild(note);
-    return;
+  switch (outcome.status) {
+    case "loading":
+      // The real adapter never actually returns this status from
+      // loadFocusRecord (Shell renders its own loading block before
+      // awaiting) — handled for exhaustiveness, not a reachable UI state.
+      return;
+    case "not_found":
+      renderUnknownElement(container, outcome.elementId);
+      return;
+    case "unavailable": {
+      const note = document.createElement("p");
+      note.className = "state-block state-block--unavailable";
+      note.textContent = outcome.reason;
+      container.appendChild(note);
+      return;
+    }
+    case "found":
+      break;
   }
 
   const record = outcome.record;

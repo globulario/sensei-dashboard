@@ -22,7 +22,15 @@ export class Shell {
   #navEl!: HTMLElement;
   #mainEl!: HTMLElement;
   #outcome: ProjectionOutcome = { status: "loading" };
-  #currentRouteName: Route["name"] | undefined;
+  /**
+   * Incremented at the start of every render() call. Every async
+   * continuation compares its own captured value against the current one
+   * before touching the DOM — comparing route *names* is not enough, since
+   * two different /element/:id navigations share the same route name
+   * ("element") and a slower response for the first could otherwise
+   * overwrite a faster response already shown for the second.
+   */
+  #renderGeneration = 0;
 
   constructor(root: HTMLElement, adapter: ProjectionAdapter, router: Router) {
     this.#root = root;
@@ -68,7 +76,12 @@ export class Shell {
     ];
     for (const link of links) {
       const a = document.createElement("a");
-      a.href = link.path;
+      // Carry the current query string (e.g. ?fixture=contested) into the
+      // href itself, not just the JS-driven navigate() call below — a
+      // middle-click/open-in-new-tab bypasses the click handler and follows
+      // the href literally, and it must resolve to the same rendered
+      // projection, not silently fall back to the default fixture.
+      a.href = link.path + window.location.search;
       a.textContent = link.label;
       a.className = "shell-nav__link";
       if (link.name === activeRouteName) {
@@ -94,7 +107,7 @@ export class Shell {
   }
 
   async render(route: Route): Promise<void> {
-    this.#currentRouteName = route.name;
+    const generation = ++this.#renderGeneration;
     this.#renderNav(route.name);
 
     // The projection is fetched once; every route after the first reuses
@@ -104,11 +117,13 @@ export class Shell {
     renderNonAvailableState(this.#mainEl, this.#outcome);
 
     const outcome = await this.#adapter.loadProjection();
+
+    // A newer render() may have started (and possibly already finished)
+    // while this fetch was in flight — never let a stale response paint
+    // over it.
+    if (generation !== this.#renderGeneration) return;
+
     this.#outcome = outcome;
-
-    // A route change may have happened while the fetch was in flight.
-    if (this.#currentRouteName !== route.name) return;
-
     this.#renderIdentity(outcome);
 
     if (renderNonAvailableState(this.#mainEl, outcome)) {
@@ -126,9 +141,17 @@ export class Shell {
       case "evolution":
         renderEvolution(this.#mainEl, projection);
         return;
-      case "element":
-        await renderFocus(this.#mainEl, projection, this.#adapter, route.elementId);
+      case "element": {
+        renderNonAvailableState(this.#mainEl, { status: "loading" });
+        const focusOutcome = await this.#adapter.loadFocusRecord(route.elementId);
+        // Same guard, for the second async gap: two /element/:id
+        // navigations share route.name === "element", so this generation
+        // check — not a route-name comparison — is what actually prevents
+        // element A's slower response from overwriting element B's.
+        if (generation !== this.#renderGeneration) return;
+        renderFocus(this.#mainEl, focusOutcome);
         return;
+      }
       case "not_found":
         renderNotFoundRoute(this.#mainEl, route.path);
         return;

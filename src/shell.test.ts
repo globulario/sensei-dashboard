@@ -153,3 +153,129 @@ describe("Shell honest-state rendering", () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Shell — stale async render protection (adversarial)", () => {
+  function focusRecord(id: string, name: string) {
+    return {
+      element_ref: id,
+      element_kind: "component" as const,
+      name,
+      responsibility: `Responsibility for ${name}`,
+      state: "open" as const,
+      owner_refs: [],
+      contract_refs: [],
+      flow_refs: [],
+      attention_refs: [],
+      decision_refs: [],
+      provenance: { evidence_refs: [] },
+    };
+  }
+
+  /** An adapter whose loadFocusRecord() for a chosen id never resolves
+   * until the test explicitly releases it — lets a test force element A's
+   * response to arrive strictly after element B's. */
+  class ControlledFocusAdapter implements ProjectionAdapter {
+    #projection: SenseiDashboardProjectionV1;
+    #pending = new Map<string, { promise: Promise<FocusOutcome>; resolve: (o: FocusOutcome) => void }>();
+
+    constructor(projection: SenseiDashboardProjectionV1) {
+      this.#projection = projection;
+    }
+
+    async loadProjection(): Promise<ProjectionOutcome> {
+      return { status: "available", projection: this.#projection };
+    }
+
+    holdFocusRecord(elementId: string): void {
+      let resolve!: (o: FocusOutcome) => void;
+      const promise = new Promise<FocusOutcome>((r) => {
+        resolve = r;
+      });
+      this.#pending.set(elementId, { promise, resolve });
+    }
+
+    releaseFocusRecord(elementId: string, outcome: FocusOutcome): void {
+      this.#pending.get(elementId)?.resolve(outcome);
+    }
+
+    async loadFocusRecord(elementId: string): Promise<FocusOutcome> {
+      const held = this.#pending.get(elementId);
+      if (held) return held.promise;
+      const record = this.#projection.focus_records.find((r) => r.element_ref === elementId);
+      return record ? { status: "found", record } : { status: "not_found", elementId };
+    }
+
+    capabilities(): AdapterCapabilities {
+      return { liveRefresh: false, revisionCompare: false, mode: "static" };
+    }
+  }
+
+  it("a slower response for an earlier /element/:id navigation does not overwrite a faster response for a later one (the exact bug reported: comparing only route.name is not enough, since both are 'element')", async () => {
+    const projection = minimalProjection({
+      focus_records: [focusRecord("component.a", "ComponentAAA"), focusRecord("component.b", "ComponentBBB")],
+    });
+    const adapter = new ControlledFocusAdapter(projection);
+    adapter.holdFocusRecord("component.a"); // A will not resolve until we say so
+
+    const root = mount();
+    const shell = new Shell(root, adapter, new Router());
+
+    // Navigate to A, then immediately to B, without awaiting A first — this
+    // is what a fast double-click / back-then-forward on Focus links does.
+    const renderA = shell.render({ name: "element", elementId: "component.a", query: new URLSearchParams() });
+    const renderB = shell.render({ name: "element", elementId: "component.b", query: new URLSearchParams() });
+
+    await renderB;
+    expect(root.textContent).toContain("ComponentBBB");
+
+    // Now let A's slow response arrive, strictly after B already rendered.
+    adapter.releaseFocusRecord("component.a", { status: "found", record: focusRecord("component.a", "ComponentAAA") });
+    await renderA;
+
+    // B's content must still be what's shown — A's late arrival must not
+    // have overwritten it.
+    expect(root.textContent).toContain("ComponentBBB");
+    expect(root.textContent).not.toContain("ComponentAAA");
+  });
+
+  it("a slower loadProjection() response from an earlier render() is discarded once a newer render() has resolved — even for two renders of the same route name, proving the guard is a generation counter, not a route-name comparison", async () => {
+    let releaseFirst!: (o: ProjectionOutcome) => void;
+    const firstPromise = new Promise<ProjectionOutcome>((r) => {
+      releaseFirst = r;
+    });
+    let callCount = 0;
+    const adapter: ProjectionAdapter = {
+      async loadProjection() {
+        callCount++;
+        if (callCount === 1) return firstPromise; // held open
+        return { status: "available", projection: minimalProjection() }; // resolves immediately
+      },
+      async loadFocusRecord() {
+        return { status: "unavailable", reason: "n/a" };
+      },
+      capabilities() {
+        return { liveRefresh: false, revisionCompare: false, mode: "static" };
+      },
+    };
+
+    const root = mount();
+    const shell = new Shell(root, adapter, new Router());
+
+    // Same route name both times ("overview") — if the old code's
+    // route-name-only check were still in place this pair would already be
+    // indistinguishable from a real duplicate, which is exactly why it's
+    // not a safe way to detect staleness.
+    const first = shell.render({ name: "overview", query: new URLSearchParams() });
+    const second = shell.render({ name: "overview", query: new URLSearchParams() });
+    await second;
+    const mainAfterSecond = root.querySelector("h1")?.textContent;
+
+    releaseFirst({ status: "unavailable", projection: minimalProjection({ availability: { state: "unavailable", summary: "stale", limitations: [], sources: [] } }) });
+    await first;
+
+    // The first (now-stale) render's late "unavailable" response must not
+    // have overwritten what the second render already painted.
+    expect(root.querySelector("h1")?.textContent).toBe(mainAfterSecond);
+    expect(root.querySelector(".state-block--unavailable")).toBeNull();
+  });
+});

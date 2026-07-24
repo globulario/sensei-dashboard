@@ -22,7 +22,15 @@ export function parseRoute(pathname: string, search: string): Route {
 
   const elementMatch = /^\/element\/(.+)$/.exec(path);
   if (elementMatch?.[1]) {
-    return { name: "element", elementId: decodeURIComponent(elementMatch[1]), query };
+    // decodeURIComponent throws URIError on malformed percent-encoding
+    // (e.g. "%", "%zz", a truncated multi-byte sequence). A bad link must
+    // fail into an honest not_found route, never crash routing.
+    try {
+      const elementId = decodeURIComponent(elementMatch[1]);
+      return { name: "element", elementId, query };
+    } catch {
+      return { name: "not_found", path, query };
+    }
   }
 
   return { name: "not_found", path, query };
@@ -60,9 +68,20 @@ export class Router {
     this.#emit();
   }
 
+  /**
+   * Navigates to `path`. If `path` carries no query string of its own, the
+   * current one (e.g. `?fixture=contested`, or a future `?lens=`/
+   * `?revision=`) is preserved rather than silently dropped — otherwise the
+   * URL stops deterministically identifying the rendered projection: a nav
+   * click could keep the in-memory adapter pointed at one fixture while the
+   * address bar (and a reload of it) would resolve to the default. Pass a
+   * path that already contains "?" (even `path + "?"` for an explicitly
+   * empty query) to opt out.
+   */
   navigate(path: string): void {
-    if (path === window.location.pathname + window.location.search) return;
-    window.history.pushState({}, "", path);
+    const target = path.includes("?") ? path : path + window.location.search;
+    if (target === window.location.pathname + window.location.search) return;
+    window.history.pushState({}, "", target);
     this.#emit();
   }
 

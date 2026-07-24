@@ -1,0 +1,55 @@
+name: contract-parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/*.schema.json"
+      - "docs/fixtures/dashboard-projection/**"
+      - "contract/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/contract-parity.yml"
+  pull_request:
+    paths:
+      - "docs/*.schema.json"
+      - "docs/fixtures/dashboard-projection/**"
+      - "contract/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/contract-parity.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Type-check generated types
+        run: npx tsc --noEmit
+
+      - name: Regenerate types and fail if committed output is stale
+        run: |
+          npm run generate:types
+          git diff --exit-code -- contract/generated || {
+            echo "::error::contract/generated/*.ts is stale relative to docs/*.schema.json — run 'npm run generate:types' and commit the result.";
+            exit 1;
+          }
+
+      - name: Verify schema/fixture pin (local digests + live cross-repo parity + schema validation)
+        run: npm run verify:pin
+
+      - name: Run test suite
+        run: npm test

@@ -1,0 +1,94 @@
+{
+  "$comment": "Producer-consumer parity pin. Generated and verified by scripts/verify-schema-pin.mjs (npm run verify:pin). Do not hand-edit digests — update source_commit, re-run the verifier against the new commit once it is itself accepted, and let it recompute this file, or update by hand only alongside a matching source_commit bump reviewed the same way the schema adoption itself is reviewed.",
+  "source_repository": "globulario/sensei",
+  "source_commit": "cbeb5719466772e136d2f212d69bbed2900c7420",
+  "source_pr": "https://github.com/globulario/sensei/pull/116",
+  "schemas": [
+    {
+      "schema_version": "sensei.dashboard.projection.v1",
+      "source_path": "docs/schemas/dashboard-projection/v1/dashboard-projection-v1.schema.json",
+      "mirror_path": "docs/dashboard-projection-v1.schema.json",
+      "sha256": "2a34124055bad3ba98e9bcabd0db2d1c828166f23bd0b052e05535d0f2de09ca"
+    },
+    {
+      "schema_version": "sensei.dashboard.agent-handoff.v1",
+      "source_path": "docs/schemas/dashboard-projection/v1/agent-handoff-v1.schema.json",
+      "mirror_path": "docs/agent-handoff-v1.schema.json",
+      "sha256": "db14a9dc4734fa43dca272065a0b7af2b542639a046e3b5c71516f9e9533a11a"
+    }
+  ],
+  "fixtures": [
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/real-repo/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/real-repo/projection.json",
+      "sha256": "8c3de7e1e9c9dd12920c644fa40ae53f7e644eb459beb2c66cfc2918e0d3b255",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/public-redacted/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/public-redacted/projection.json",
+      "sha256": "eccdb63a323cb2555dda5829bdaa796c8af88222acb3e01bf652e93994b67261",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/partial/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/partial/projection.json",
+      "sha256": "6d511c2bed72690993a2d6065da02dfac70d8617b44db1825bf3749ecd161149",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/unavailable/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/unavailable/projection.json",
+      "sha256": "249467bb868b003dc1200b5853ae9fbc21d3950058b713ee3e416c47a53b4ce9",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/contested/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/contested/projection.json",
+      "sha256": "c4117cecc126d36c89959f0a997cd8a71254e6ad6f53c47787a8251d43898dc2",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/evolution-first-revision/projection.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/evolution-first-revision/projection.json",
+      "sha256": "8d37a183e6e2a95b4a892d11f7b6b7ad1f7948d5c17086dd2b46233dead54c9e",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/invalid/missing-focus-record.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/invalid/missing-focus-record.json",
+      "sha256": "2bc093340c15e6c402dbb8325532f42fb2c3ee7c310ab0d0f604139e4fa9212a",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "schema-valid-producer-invalid",
+      "note": "Instance satisfies the JSON Schema but violates Sensei's producer-side focus-referential-integrity rule (missing_focus_record), which JSON Schema alone cannot express. This mirror validates the schema-valid half only; the producer-invalid half is asserted by Sensei's own test suite."
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/invalid/duplicate-focus-record.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/invalid/duplicate-focus-record.json",
+      "sha256": "b3e50e8030a074d50a2d8aeb171bd2c380e52f2d746c142133e12d1645a5cd31",
+      "schema_version": "sensei.dashboard.projection.v1",
+      "expect": "schema-valid-producer-invalid",
+      "note": "Same as missing-focus-record.json above, for the duplicate_focus_record rule."
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/handoff/read-only.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/handoff/read-only.json",
+      "sha256": "0010d474dd2b1801398764340fd3ec0c72c99c83571d0338bc02b75509f78330",
+      "schema_version": "sensei.dashboard.agent-handoff.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/dashboard-projection/v1/handoff/propose.json",
+      "mirror_path": "docs/fixtures/dashboard-projection/v1/handoff/propose.json",
+      "sha256": "cbf99bfb0c07c5c47e510c9682df27d5dc2dbd9d7544f5287268277d21794c3f",
+      "schema_version": "sensei.dashboard.agent-handoff.v1",
+      "expect": "valid"
+    }
+  ]
+}

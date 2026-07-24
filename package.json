@@ -1,21 +1,33 @@
 {
-  "name": "sensei-dashboard-contract",
+  "name": "sensei-dashboard",
   "private": true,
   "version": "0.0.0",
-  "description": "Pinned dashboard-projection-v1 / agent-handoff-v1 contract tooling: schema mirror verification, generated TypeScript types, and fixture validation. Not the dashboard application itself.",
+  "description": "Sensei Dashboard: a human-scale architectural observatory. This package root also holds the pinned dashboard-projection-v1 / agent-handoff-v1 contract tooling (contract/, scripts/, test/*.mjs) that the application below consumes.",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test:app": "vitest run",
     "generate:types": "node scripts/generate-types.mjs",
     "verify:pin": "node scripts/verify-schema-pin.mjs",
     "test": "node --test test/*.test.mjs"
   },
-  "devDependencies": {
+  "dependencies": {
     "ajv": "8.20.0",
-    "ajv-formats": "3.0.1",
+    "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
     "json-schema-to-typescript": "15.0.4",
-    "typescript": "7.0.2"
+    "jsdom": "29.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
   }
 }

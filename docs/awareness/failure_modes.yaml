@@ -46,3 +46,51 @@ failure_modes:
 #    related_invariants:
 #      - your.real.invariant_id
 #      - meta.fallback_must_degrade_semantics
+  - id: failure_mode.dashboard.ajv_cross_schema_ref_unresolved
+    title: ajv throws 'can't resolve reference' compiling a schema that $refs another pinned schema by relative filename
+    severity: high
+    description: Adding a new validator for a schema with a cross-file $ref (e.g. agent-handoff-v1.schema.json -> dashboard-projection-v1.schema.json) by simply calling ajv.addSchema(referencedSchema) then ajv.compile(schema) throws at compile time, because the referenced schema's own $id does not match the relative filename the $ref uses.
+    protects:
+      files:
+        - src/adapter/schema-validate.ts
+    related_invariants:
+      - invariant.dashboard.ajv_cross_schema_ref_registration
+    required_tests:
+      - src/handoff/build-envelope.test.ts
+    forbidden_fix:
+      - loosen or strip the $ref instead of registering the referenced schema under its resolved key
+    evidence:
+      - 'Reproduced directly: node -e with ajv.addSchema(projectionSchema) (no explicit key) then ajv.compile(handoffSchema) -> ''can''t resolve reference dashboard-projection-v1.schema.json#/$defs/identity/properties/repository from id .../agent-handoff-v1.json'''
+  - id: failure_mode.dashboard.jsdom_duplicate_id_query_failure
+    title: Id-scoped querySelector or document.activeElement returns null/wrong element once enough prior tests' DOM has piled up in the same jsdom document
+    severity: warning
+    description: A test written correctly -- querying an id selector scoped to its own freshly-mounted container, or comparing document.activeElement to that container's child -- passes in isolation (vitest run file.test.ts -t "name") but fails only when the full file runs, because earlier tests in the same file left their rendered DOM (with the same fixed ids) attached to document.body.
+    protects:
+      files:
+        - src/shell.test.ts
+    related_invariants:
+      - invariant.dashboard.test_dom_cleared_between_mounts
+    required_tests:
+      - src/shell.test.ts
+    forbidden_fix:
+      - switch the failing assertion from an id selector to a class selector to work around it, without fixing mount()
+      - wrap the flaky assertion in a retry/try-catch
+    evidence:
+      - 'Debugged live: adding console.log(main.outerHTML) directly before the failing expect(main).not.toBeNull() printed a full, valid element -- yet the very next line''s assertion reported it as null, on the same synchronous reference, until mount() was fixed to clear document.body first'
+  - id: failure_mode.dashboard.unsafe_scheme_rendered_as_clickable_anchor
+    title: 'A new anchor built directly from projection-supplied text (bypassing externalSourceLink) becomes clickable for javascript:/data: targets'
+    severity: high
+    description: 'It is easy to add a new el("a", { attrs: { href: someProjectionField, target: "_blank", rel: "noopener noreferrer nofollow" } }) call for a new owner-supplied link field (the original Overview active-context link did exactly this) without realizing rel attributes provide zero scheme protection. This was caught by external architect review, not by any test written before the fix, because no test yet asserted on unsafe schemes.'
+    protects:
+      files:
+        - src/views/overview.ts
+        - src/views/dom.ts
+    related_invariants:
+      - invariant.dashboard.projection_supplied_links_scheme_gated
+    required_tests:
+      - src/views/dom.test.ts
+    forbidden_fix:
+      - add a regex blocklist for 'javascript:' instead of an explicit scheme allow-list (a blocklist is always incomplete -- vbscript:, unusual casing/whitespace variants, etc. slip through)
+      - sanitize/strip the dangerous prefix and still render an anchor (rewrites the target instead of refusing it)
+    evidence:
+      - 'ARCHITECT REVIEW: CHANGES REQUIRED on globulario/sensei-dashboard#5, finding #2, caught activeContextBlock() building its own anchor from ctx.url with no scheme check, alongside the same gap in the original externalSourceLink().'

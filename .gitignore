@@ -1,2 +1,9 @@
 node_modules/
 dist/
+
+# Sensei build receipts and the Go-embeddata convention `sensei propose`/
+# `sensei build` default to — this repo has no Go server to embed data
+# into, so these are pure local build artifacts, not source.
+golang/
+.sensei/*.transaction.tsv
+.sensei/data/

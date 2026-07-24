@@ -11,9 +11,44 @@
 # - API contracts
 
 files:
-  # Examples — replace with your actual critical paths:
-  # - src/auth/
-  # - src/database/migrations/
-  # - src/config/
-  # - src/api/middleware/
-  # - infrastructure/
+  # Pinned producer-consumer contract. Edits here must be a schema/pin
+  # amendment authorized by the architect relay, never an ad hoc fix (see
+  # contract/pin.json and docs/claude-stage-3-brief.md: "Do not modify
+  # generated contract types manually and do not change either schema").
+  - docs/dashboard-projection-v1.schema.json
+  - docs/agent-handoff-v1.schema.json
+  - contract/pin.json
+  - contract/generated/dashboard-projection-v1.ts
+  - contract/generated/agent-handoff-v1.ts
+
+  # Cross-file $ref resolution between the two pinned schemas is
+  # non-obvious under ajv — see invariant.dashboard.ajv_cross_schema_ref_registration
+  # / failure_mode.dashboard.ajv_cross_schema_ref_unresolved.
+  - src/adapter/schema-validate.ts
+
+  # Adapter boundary: the one place fetch, schema validation, and Focus
+  # referential-integrity validation are allowed to happen. A regression
+  # here lets an invalid or producer-invalid projection reach a view.
+  - src/adapter/focus-integrity.ts
+  - src/adapter/static-fixture-adapter.ts
+
+  # Owns async projection/focus loading and the render-generation
+  # stale-response guard. A regression here reintroduces the PR #4 race
+  # (a slower response overwriting a newer navigation's render).
+  - src/shell.ts
+
+  # Query-string preservation and percent-encoding safety for deep links.
+  # A regression here reintroduces PR #4's three navigation-integrity bugs
+  # (query loss on nav, stale-render race, malformed-URL crash).
+  - src/router.ts
+
+  # Projection-supplied clickable-target scheme gating — see
+  # invariant.dashboard.projection_supplied_links_scheme_gated /
+  # failure_mode.dashboard.unsafe_scheme_rendered_as_clickable_anchor.
+  # noopener/noreferrer/nofollow alone do not stop javascript:/data: targets.
+  - src/views/dom.ts
+
+  # Pure agent-handoff envelope builder: every field must be copied
+  # verbatim from the validated projection or explicit user choice, never
+  # computed or inferred (dashboard-architecture-v1.md §6.5, §3.3).
+  - src/handoff/build-envelope.ts

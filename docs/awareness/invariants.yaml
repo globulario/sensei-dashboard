@@ -36,3 +36,51 @@ invariants:
 #      - path/to/config_test.go:TestConfigLoaderRejectsEnvVars
 #    related_failure_modes:
 #      - config.env_var_overrides_production_setting
+  - id: invariant.dashboard.ajv_cross_schema_ref_registration
+    title: Cross-file JSON-schema $refs must be registered under their resolved relative key, not the referenced schema's own $id
+    severity: high
+    status: active
+    description: agent-handoff-v1.schema.json refs dashboard-projection-v1.schema.json by relative filename. That filename does not match the projection schema's own $id (dashboard-projection-v1.json, no .schema suffix). ajv.addSchema(schema) alone registers it under its own $id and leaves the relative $ref unresolved at compile time.
+    protects:
+      files:
+        - src/adapter/schema-validate.ts
+    required_tests:
+      - src/handoff/build-envelope.test.ts
+    evidence:
+      - 'ajv.compile(handoffSchema) throws: can''t resolve reference dashboard-projection-v1.schema.json#/... from id https://.../agent-handoff-v1.json'
+      - Fixed by ajv.addSchema(projectionSchema, "https://globulario.github.io/sensei-dashboard/schema/dashboard-projection-v1.schema.json") on a second, independent ajv instance
+    contract: ajv schema compilation for any pinned schema that $refs another pinned schema by relative filename must register the referenced schema under the exact key that relative $ref resolves to, independent of that schema's own $id
+  - id: invariant.dashboard.test_dom_cleared_between_mounts
+    title: Every vitest DOM test's mount() helper must clear document.body before appending a new container
+    severity: warning
+    status: active
+    description: 'Views under test (Shell, the handoff panel, Focus, Overview) render elements with fixed ids (#main-content, #handoff-intent, #handoff-lens, #handoff-summary). If a test file''s mount() helper only appends new containers without clearing prior ones, every earlier test''s DOM stays attached to document.body for the rest of the file, and later tests querying by id selector or asserting on document.activeElement/.focus() get null or the wrong element -- nondeterministically, only once the file accumulates enough duplicate ids.'
+    protects:
+      files:
+        - src/shell.test.ts
+        - src/handoff/handoff-panel.test.ts
+        - src/views/focus.test.ts
+        - src/views/overview.test.ts
+    required_tests:
+      - src/shell.test.ts
+      - src/handoff/handoff-panel.test.ts
+    evidence:
+      - src/shell.test.ts's focus-on-route-change test failed with 'expected null not to be null' only when the full file ran (not with -t isolating the single test); root.querySelector('#main-content') returned null despite the element existing, because dozens of earlier tests' un-cleared containers each also contained id=main-content
+      - 'Fixed identically in all four files: mount() now calls document.body.replaceChildren() before document.body.appendChild(container)'
+    contract: any test helper that renders real DOM into document.body for assertions must call document.body.replaceChildren() (or equivalent) before mounting a fresh container, so per-render ids and document.activeElement stay scoped to the current test
+  - id: invariant.dashboard.projection_supplied_links_scheme_gated
+    title: Every projection-supplied clickable target must resolve to an http(s) scheme (or safe relative URL) before it is rendered as a clickable anchor
+    severity: high
+    status: active
+    description: 'noopener/noreferrer/nofollow protect the opener relationship but do nothing to stop a javascript: or data: target from executing when clicked. Any anchor built directly from projection-supplied text (rather than through the shared safe-link check) reintroduces an XSS-adjacent hole the moment a producer (or a compromised/buggy upstream) supplies an active-scheme target.'
+    protects:
+      files:
+        - src/views/dom.ts
+    required_tests:
+      - src/views/dom.test.ts
+      - src/views/focus.test.ts
+      - src/views/overview.test.ts
+    evidence:
+      - 'ARCHITECT REVIEW: CHANGES REQUIRED on globulario/sensei-dashboard#5 (finding #2): externalSourceLink() wrote source_links[*].target and active_context.url directly into href with only noopener/noreferrer/nofollow -- no scheme check.'
+      - 'Fixed by centralizing scheme resolution in dom.ts''s externalSourceLink(): new URL(target, window.location.href), accept only protocol in {http:, https:}; otherwise render plain text plus a role=note diagnostic naming the original target verbatim.'
+    contract: any UI element that turns owner-supplied projection text (source_links[*].target, active_context.url, and any future such field) into a clickable href must first resolve it and check its scheme against an explicit allow-list (http/https), rendering non-clickable text with a visible diagnostic instead of an anchor for anything else -- never rewriting the target into a different URL

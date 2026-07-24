@@ -37,9 +37,14 @@ export function parseRoute(pathname: string, search: string): Route {
 }
 
 /** Builds a safe, stable href for a Focus deep link. Always percent-encodes
- * the element id — never assumes it's URL-safe as-is. */
+ * the element id — never assumes it's URL-safe as-is. Carries the current
+ * query string forward (e.g. `?fixture=contested`) the same way Shell's nav
+ * links do, so following a Focus link keeps resolving the same projection
+ * instead of silently falling back to the default fixture
+ * (claude-stage-3-brief.md §2.1: "preserve current query state such as
+ * fixture, lens, or revision context"). */
 export function elementHref(elementId: string): string {
-  return `/element/${encodeURIComponent(elementId)}`;
+  return `/element/${encodeURIComponent(elementId)}${window.location.search}`;
 }
 
 export const ROUTE_PATHS = {

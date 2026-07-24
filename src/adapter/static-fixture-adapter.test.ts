@@ -88,4 +88,34 @@ describe("StaticFixtureAdapter", () => {
     const caps = adapter.capabilities();
     expect(caps).toEqual({ liveRefresh: false, revisionCompare: false, mode: "static" });
   });
+
+  // --- Focus referential-integrity rejection (claude-stage-3-brief.md §2.2) ---
+
+  it("rejects the accepted missing-focus-record fixture as an invalid outcome, not available/unavailable", async () => {
+    const adapter = new StaticFixtureAdapter("invalid-missing-focus-record");
+    const outcome = await adapter.loadProjection();
+    expect(outcome.status).toBe("invalid");
+    if (outcome.status === "invalid") {
+      expect(outcome.reason).toContain("Focus referential-integrity");
+      expect(outcome.errors.some((e) => e.includes("component.orphan"))).toBe(true);
+    }
+  });
+
+  it("rejects the accepted duplicate-focus-record fixture as an invalid outcome", async () => {
+    const adapter = new StaticFixtureAdapter("invalid-duplicate-focus-record");
+    const outcome = await adapter.loadProjection();
+    expect(outcome.status).toBe("invalid");
+    if (outcome.status === "invalid") {
+      expect(outcome.errors.some((e) => e.includes("component.dup"))).toBe(true);
+    }
+  });
+
+  it("never reaches the semantic Focus-integrity check for a document that is already schema-invalid — schema errors are reported, not integrity errors", async () => {
+    const adapter = new StaticFixtureAdapter("_synthetic-invalid-schema");
+    const outcome = await adapter.loadProjection();
+    expect(outcome.status).toBe("invalid");
+    if (outcome.status === "invalid") {
+      expect(outcome.reason).toContain("schema validation");
+    }
+  });
 });

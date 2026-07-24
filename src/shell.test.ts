@@ -52,6 +52,10 @@ function minimalProjection(overrides: Partial<SenseiDashboardProjectionV1> = {})
 }
 
 function mount() {
+  // Every Shell creates its own id="main-content" element; leaving prior
+  // tests' roots attached would pile up duplicate ids in the same document
+  // and make id-based queries (and focus/activeElement) unreliable.
+  document.body.replaceChildren();
   const root = document.createElement("div");
   document.body.appendChild(root);
   return root;
@@ -81,7 +85,7 @@ describe("Shell honest-state rendering", () => {
     expect(root.querySelector("h1")).toBeNull();
   });
 
-  it("renders the partial-projection banner with visible limitations when availability.state is 'partial'", async () => {
+  it("renders the projection's own availability state and limitations visibly when availability.state is 'partial'", async () => {
     const projection = minimalProjection({
       availability: {
         state: "partial",
@@ -96,16 +100,20 @@ describe("Shell honest-state rendering", () => {
 
     await shell.render({ name: "overview", query: new URLSearchParams() });
 
-    const banner = root.querySelector(".state-block--partial");
-    expect(banner).not.toBeNull();
-    expect(banner!.textContent).toContain("regions are not authored");
-    expect(banner!.textContent).toContain("flows are not populated");
-    // Real Overview content still renders alongside the banner — partial is
-    // not treated the same as unavailable.
-    expect(root.querySelector("h1")?.textContent).toBe("Overview");
+    // Stage 3 (claude-stage-3-brief.md §1.1) integrates availability into
+    // the identity/assessment strip rather than a separate banner — the
+    // guarantee under test is that partial state and its limitations remain
+    // visible, not the specific element shape that carries them.
+    const availabilityToken = root.querySelector(".status-token--partial");
+    expect(availabilityToken).not.toBeNull();
+    expect(root.textContent).toContain("regions are not authored");
+    expect(root.textContent).toContain("flows are not populated");
+    // Real Overview content still renders alongside it — partial is not
+    // treated the same as unavailable.
+    expect(root.querySelector("h1")?.textContent).toBe("Test Repo");
   });
 
-  it("renders no partial banner at all when availability.state is 'available'", async () => {
+  it("renders no partial availability indicator when availability.state is 'available'", async () => {
     const projection = minimalProjection({ availability: { state: "available", summary: "ok", limitations: [], sources: [] } });
     const adapter = new FakeAdapter({ status: "available", projection });
     const root = mount();
@@ -113,7 +121,7 @@ describe("Shell honest-state rendering", () => {
 
     await shell.render({ name: "overview", query: new URLSearchParams() });
 
-    expect(root.querySelector(".state-block--partial")).toBeNull();
+    expect(root.querySelector(".status-token--partial")).toBeNull();
   });
 
   it("renders the invalid state with the diagnostic errors, not silently repaired or defaulted", async () => {
@@ -151,6 +159,37 @@ describe("Shell honest-state rendering", () => {
     // route render, which is correct — the caching contract lives in the
     // adapter (see static-fixture-adapter.test.ts), not duplicated here.
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("moves focus to the main content region after a route renders (claude-stage-3-brief.md §5)", async () => {
+    const projection = minimalProjection();
+    const adapter = new FakeAdapter({ status: "available", projection });
+    const root = mount();
+    const shell = new Shell(root, adapter, new Router());
+    // #buildChrome() creates #main-content synchronously in the Shell
+    // constructor, before any render() call — spying on the real DOM API
+    // directly is deterministic, unlike asserting on document.activeElement
+    // after the fact (jsdom's activeElement bookkeeping is not reliable
+    // across a suite that piles up many detached-but-still-in-document
+    // roots from earlier tests).
+    const main = root.querySelector("#main-content") as HTMLElement;
+    const focusSpy = vi.spyOn(main, "focus");
+
+    await shell.render({ name: "overview", query: new URLSearchParams() });
+
+    expect(focusSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves focus to main content for a non-available outcome too, so the honest state is announced", async () => {
+    const adapter = new FakeAdapter({ status: "disconnected", reason: "missing static snapshot: 404" });
+    const root = mount();
+    const shell = new Shell(root, adapter, new Router());
+    const main = root.querySelector("#main-content") as HTMLElement;
+    const focusSpy = vi.spyOn(main, "focus");
+
+    await shell.render({ name: "overview", query: new URLSearchParams() });
+
+    expect(focusSpy).toHaveBeenCalledTimes(1);
   });
 });
 

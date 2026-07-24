@@ -6,6 +6,7 @@
 
 import type { AdapterCapabilities, FocusOutcome, ProjectionAdapter, ProjectionOutcome } from "./types.js";
 import { validateProjection } from "./schema-validate.js";
+import { validateFocusIntegrity } from "./focus-integrity.js";
 import type { SenseiDashboardProjectionV1 } from "../../contract/generated/dashboard-projection-v1.js";
 
 /**
@@ -25,6 +26,12 @@ const FIXTURE_URLS: Record<string, string> = {
   "public-redacted": "/fixtures/dashboard-projection/v1/public-redacted/projection.json",
   "_synthetic-available": "/fixtures/_synthetic/available.json",
   "_synthetic-invalid-schema": "/fixtures/_synthetic/invalid-schema.json",
+  // Accepted schema-valid/producer-invalid fixtures (claude-stage-3-brief.md
+  // §2.2): real fixtures Sensei's own contract pin accepts, reachable here
+  // so the Focus-integrity rejection path is exercisable end to end, not
+  // just schema-valid ones.
+  "invalid-missing-focus-record": "/fixtures/dashboard-projection/v1/invalid/missing-focus-record.json",
+  "invalid-duplicate-focus-record": "/fixtures/dashboard-projection/v1/invalid/duplicate-focus-record.json",
 };
 
 export const DEFAULT_FIXTURE = "real-repo";
@@ -101,6 +108,18 @@ export class StaticFixtureAdapter implements ProjectionAdapter {
     // arbitrary JSON. This is the one and only cast in the adapter — every
     // caller past this point receives the validated domain type.
     const projection = parsed as SenseiDashboardProjectionV1;
+
+    // A schema-valid document can still violate the producer's Focus
+    // referential-integrity rule (claude-stage-3-brief.md §2.2) — JSON
+    // Schema alone cannot express "exactly one focus_records entry per
+    // selectable element". That is a projection-integrity defect, not
+    // something this adapter repairs: reject it the same way a
+    // schema-validation failure is rejected, with a useful diagnostic.
+    const focusIntegrity = validateFocusIntegrity(projection);
+    if (!focusIntegrity.valid) {
+      return { status: "invalid", reason: "projection failed Focus referential-integrity validation", errors: focusIntegrity.errors };
+    }
+
     if (projection.availability.state === "unavailable") {
       return { status: "unavailable", projection };
     }

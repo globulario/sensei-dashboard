@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadPin, sha256File, sha256Bytes, fetchRaw } from "../scripts/lib/pin.mjs";
+import { loadPin, sha256File, sha256Bytes, fetchRaw, allPinEntries } from "../scripts/lib/pin.mjs";
 
 const skipLive = process.env.SKIP_LIVE_PIN_CHECK === "1";
 
@@ -27,19 +27,47 @@ test("every imported fixture's local copy byte-matches its recorded digest", asy
   }
 });
 
+// Every artifact contract/pin.json pins — both schemas AND all ten
+// fixtures — must be live-verified against the pinned commit, not just the
+// two schemas. Checking a fixture only against a digest recorded in this
+// same pin.json would let the fixture and its digest drift together
+// without CI ever proving they still match what Sensei actually published;
+// the live fetch is the only check that catches that.
 test(
-  "every pinned schema byte-matches the real file at the pinned commit in globulario/sensei (live cross-repo parity)",
+  "every pinned artifact (schemas + all fixtures) byte-matches the real file at the pinned commit, fetched from pin.source_repository (live cross-repo parity)",
   { skip: skipLive && "SKIP_LIVE_PIN_CHECK=1" },
   async () => {
     const pin = await loadPin();
-    for (const schema of pin.schemas) {
-      const remote = await fetchRaw(pin.source_commit, schema.source_path);
+    const entries = allPinEntries(pin);
+    assert.equal(entries.length, 12, "expected 2 schemas + 10 fixtures = 12 pinned artifacts");
+    for (const entry of entries) {
+      const remote = await fetchRaw(pin.source_repository, pin.source_commit, entry.source_path);
       const remoteDigest = sha256Bytes(remote);
       assert.equal(
         remoteDigest,
-        schema.sha256,
-        `${schema.source_path}@${pin.source_commit} in globulario/sensei no longer matches the pinned mirror`
+        entry.sha256,
+        `${entry.source_path}@${pin.source_repository}@${pin.source_commit} no longer matches the pinned mirror`
       );
+    }
+  }
+);
+
+test(
+  "every pin entry actually participates in live parity — none silently skipped",
+  { skip: skipLive && "SKIP_LIVE_PIN_CHECK=1" },
+  async () => {
+    const pin = await loadPin();
+    const entries = allPinEntries(pin);
+    const results = await Promise.all(
+      entries.map(async (entry) => {
+        const remote = await fetchRaw(pin.source_repository, pin.source_commit, entry.source_path);
+        return { path: entry.source_path, checked: true, matched: sha256Bytes(remote) === entry.sha256 };
+      })
+    );
+    assert.equal(results.length, entries.length);
+    for (const r of results) {
+      assert.equal(r.checked, true, `${r.path} was not live-checked`);
+      assert.equal(r.matched, true, `${r.path} was live-checked but did not match`);
     }
   }
 );

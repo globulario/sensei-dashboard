@@ -44,12 +44,16 @@ or individually via the test suite (`npm test`, see `test/pin.test.mjs` and
 1. **Local digest check.** Every file `contract/pin.json` lists is
    re-hashed and compared against the digest recorded there. Catches an
    accidental hand-edit to a file that is supposed to be an exact mirror.
-2. **Live cross-repo parity check.** Every pinned schema is fetched from
-   `raw.githubusercontent.com/globulario/sensei/<pinned commit>/<path>` and
-   byte-compared against the local mirror. This is the actual
+2. **Live cross-repo parity check.** Every one of the 12 pinned artifacts —
+   both schemas and all ten fixtures — is fetched from
+   `raw.githubusercontent.com/<pin.source_repository>/<pinned commit>/<path>`
+   and byte-compared against the local mirror. This is the actual
    producer-consumer parity proof, not just "unchanged since I copied it".
-   Set `SKIP_LIVE_PIN_CHECK=1` to skip it (e.g. offline development); CI
-   always runs it.
+   Fixtures are included deliberately: checking a fixture only against a
+   digest recorded in this same `pin.json` would let the fixture and its
+   digest drift together undetected, so the live fetch covers all 12, not
+   just the two schemas. Set `SKIP_LIVE_PIN_CHECK=1` to skip it (e.g.
+   offline development); CI always runs it.
 3. **Fixture schema validation.** Every fixture in `contract/pin.json` is
    validated against the real, canonical JSON Schema (Draft 2020-12, via
    `ajv`) for whichever contract it belongs to.

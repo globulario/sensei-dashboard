@@ -26,13 +26,18 @@ export function sha256Bytes(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
-export async function fetchRaw(sourceCommit, sourcePath) {
-  const url = `https://raw.githubusercontent.com/globulario/sensei/${sourceCommit}/${sourcePath}`;
+export async function fetchRaw(sourceRepository, sourceCommit, sourcePath) {
+  const url = `https://raw.githubusercontent.com/${sourceRepository}/${sourceCommit}/${sourcePath}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`fetch ${url}: HTTP ${res.status}`);
   }
   return Buffer.from(await res.arrayBuffer());
+}
+
+/** Every artifact contract/pin.json pins (schemas + fixtures), as one flat list. */
+export function allPinEntries(pin) {
+  return [...pin.schemas, ...pin.fixtures];
 }
 
 /**

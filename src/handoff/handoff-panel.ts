@@ -8,13 +8,24 @@ import type { SenseiDashboardAgentHandoffV1 } from "../../contract/generated/age
 import type { SenseiDashboardProjectionV1 } from "../../contract/generated/dashboard-projection-v1.js";
 import { validateHandoffEnvelope } from "../adapter/schema-validate.js";
 import { el, section } from "../views/dom.js";
-import { buildHandoffEnvelope, DEFAULT_HANDOFF_LENS, type HandoffIntent, type HandoffSelection } from "./build-envelope.js";
+import { buildHandoffEnvelope, DEFAULT_HANDOFF_LENS, type HandoffIntent, type HandoffLens, type HandoffSelection } from "./build-envelope.js";
 
 const INTENT_OPTIONS: Array<{ value: HandoffIntent; label: string }> = [
   { value: "explain", label: "Explain" },
   { value: "review", label: "Review" },
   { value: "compare", label: "Compare" },
   { value: "propose", label: "Propose (prepare a governed-change proposal — not mutation authority)" },
+];
+
+// The six canonical contract lens identifiers (architecture-dashboard-v1.md
+// §7) — the serialized value is the token itself, never relabeled.
+const LENS_OPTIONS: Array<{ value: HandoffLens; label: string }> = [
+  { value: "structure", label: "Structure" },
+  { value: "authority", label: "Authority" },
+  { value: "behavior", label: "Behavior" },
+  { value: "risk", label: "Risk" },
+  { value: "change", label: "Change" },
+  { value: "closure", label: "Closure" },
 ];
 
 /**
@@ -51,6 +62,16 @@ export function renderHandoffPanel(container: HTMLElement, projection: SenseiDas
   controls.appendChild(intentLabel);
   controls.appendChild(intentSelect);
 
+  const lensLabel = el("label", { className: "handoff-panel__field-label", text: "Lens", attrs: { for: "handoff-lens" } });
+  const lensSelect = el("select", { className: "handoff-panel__lens", attrs: { id: "handoff-lens" } });
+  for (const opt of LENS_OPTIONS) {
+    const optionEl = el("option", { text: opt.label, attrs: { value: opt.value } });
+    if (opt.value === DEFAULT_HANDOFF_LENS) optionEl.selected = true;
+    lensSelect.appendChild(optionEl);
+  }
+  controls.appendChild(lensLabel);
+  controls.appendChild(lensSelect);
+
   const summaryLabel = el("label", {
     className: "handoff-panel__field-label",
     text: "Visible-concern note (optional, your own words — never generated)",
@@ -61,12 +82,6 @@ export function renderHandoffPanel(container: HTMLElement, projection: SenseiDas
   controls.appendChild(summaryInput);
 
   panel.appendChild(controls);
-  panel.appendChild(
-    el("p", {
-      className: "handoff-panel__lens-note",
-      text: `Lens: ${DEFAULT_HANDOFF_LENS} (fixed default — interactive lens selection is not implemented in this build)`,
-    })
-  );
 
   const capabilityNote = el("p", { className: "handoff-panel__capability-note" });
   panel.appendChild(capabilityNote);
@@ -96,7 +111,12 @@ export function renderHandoffPanel(container: HTMLElement, projection: SenseiDas
     const summaryText = summaryInput.value.trim();
     const envelope = buildHandoffEnvelope(projection, route, selection, {
       requestedIntent: intentSelect.value as HandoffIntent,
-      lens: DEFAULT_HANDOFF_LENS,
+      // Cast, not validated here: an out-of-contract value (only reachable
+      // by manipulating the DOM directly, since the <select> only ever
+      // offers the six canonical options) is caught by
+      // validateHandoffEnvelope() below via the schema's lens enum, and
+      // export is disabled the same way any other invalid envelope is.
+      lens: lensSelect.value as HandoffLens,
       visibleConcernSummary: summaryText.length > 0 ? summaryText : null,
     });
     preview.textContent = JSON.stringify(envelope, null, 2);
@@ -117,6 +137,7 @@ export function renderHandoffPanel(container: HTMLElement, projection: SenseiDas
   }
 
   intentSelect.addEventListener("change", update);
+  lensSelect.addEventListener("change", update);
   summaryInput.addEventListener("input", update);
 
   copyButton.addEventListener("click", () => {

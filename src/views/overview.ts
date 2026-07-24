@@ -18,7 +18,7 @@ import type {
 } from "../../contract/generated/dashboard-projection-v1.js";
 import { ReferenceIndex } from "../adapter/reference-index.js";
 import { ROUTE_PATHS } from "../router.js";
-import { el, provenanceDisclosure, referenceList, section, statusLine } from "./dom.js";
+import { el, externalSourceLink, provenanceDisclosure, referenceList, section, statusLine } from "./dom.js";
 
 const ACTIVE_CONTEXT_KIND_LABEL: Record<string, string> = {
   task: "Active task",
@@ -87,7 +87,7 @@ function activeContextBlock(ctx: NonNullable<SenseiDashboardProjectionV1["active
   const wrap = section(label, "active-context");
   wrap.appendChild(el("p", { className: "active-context__heading", text: `${label}: ${ctx.label}` }));
   if (ctx.url) {
-    wrap.appendChild(el("a", { text: "Open", attrs: { href: ctx.url, target: "_blank", rel: "noopener noreferrer nofollow" } }));
+    wrap.appendChild(externalSourceLink("Open", ctx.url));
   }
   return wrap;
 }
@@ -239,10 +239,19 @@ function evolutionSection(evolution: Evolution, index: ReferenceIndex): HTMLElem
   }
 
   if (evolution.changes.length === 0) {
-    const message =
-      evolution.base_revision === null
-        ? "This is the first authoritative projection — there is no prior revision to compare against."
-        : "No changes are recorded between these revisions.";
+    // A first authoritative projection is never "no changes" (there is no
+    // prior revision to compare against) regardless of availability.
+    // Otherwise, an empty list under partial/unavailable evolution must not
+    // read as a completed comparison that found nothing (ARCHITECT REVIEW
+    // finding #4 on PR #5) — only a fully available comparison may say that.
+    let message: string;
+    if (evolution.base_revision === null) {
+      message = "This is the first authoritative projection — there is no prior revision to compare against.";
+    } else if (evolution.availability !== "available") {
+      message = "No change records were supplied within the declared limitations of this evolution comparison.";
+    } else {
+      message = "No changes are recorded between these revisions.";
+    }
     s.appendChild(el("p", { className: "evolution-empty", text: message }));
     return s;
   }

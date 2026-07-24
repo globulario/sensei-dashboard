@@ -179,6 +179,20 @@ summary:focus-visible,
   color: var(--invalid);
 }
 
+.unsafe-link__diagnostic {
+  color: var(--invalid);
+  font-size: 0.85em;
+}
+
+.focus-partial-notice {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--partial);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin: 1rem 0;
+}
+
 .provenance-disclosure {
   margin: 0.5rem 0;
 }

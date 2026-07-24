@@ -147,9 +147,47 @@ export function provenanceDisclosure(provenance: Provenance): HTMLElement {
   return details;
 }
 
+// Projection-supplied clickable targets (Focus source links, active-context
+// URLs) are owner text, not something this dashboard authors — but
+// `noopener`/`noreferrer` alone only protect the opener relationship, not
+// the scheme. A "safe" target must resolve to an accepted, non-active
+// scheme (ARCHITECT REVIEW finding #2 on PR #5: `javascript:`/`data:` and
+// similar active schemes must never become clickable, and malformed targets
+// must not silently become something else).
+const SAFE_LINK_SCHEMES = new Set(["http:", "https:"]);
+
+function isSafeLinkTarget(target: string): boolean {
+  try {
+    // Resolving against the current origin lets a genuinely relative target
+    // ("/docs/x", "docs/x") through — it inherits the page's own http(s)
+    // scheme — while an absolute target carrying its own scheme (including
+    // "javascript:", "data:", or a malformed string) is judged on that
+    // scheme, not silently reinterpreted as relative.
+    const resolved = new URL(target, window.location.href);
+    return SAFE_LINK_SCHEMES.has(resolved.protocol);
+  } catch {
+    return false;
+  }
+}
+
 /** External source link exactly as supplied — never rewritten — with safe
  * link attributes (brief §2.1: "apply safe link attributes and do not
- * rewrite targets"). */
+ * rewrite targets"). A target whose resolved scheme is not http(s) (e.g.
+ * `javascript:`, `data:`) or that fails to parse is never rendered as a
+ * clickable anchor — instead it renders as plain text with a visible
+ * diagnostic, never silently dropped and never rewritten into another URL. */
 export function externalSourceLink(label: string, target: string): HTMLElement {
+  if (!isSafeLinkTarget(target)) {
+    const wrap = el("span", { className: "unsafe-link" });
+    wrap.appendChild(el("span", { text: label }));
+    wrap.appendChild(
+      el("span", {
+        className: "unsafe-link__diagnostic",
+        text: ` (link not rendered: "${target}" is not an accepted http(s) or relative target)`,
+        attrs: { role: "note" },
+      })
+    );
+    return wrap;
+  }
   return el("a", { text: label, attrs: { href: target, target: "_blank", rel: "noopener noreferrer nofollow" } });
 }

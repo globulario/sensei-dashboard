@@ -31,6 +31,52 @@ function identityBlock(record: FocusRecord): HTMLElement {
   return wrap;
 }
 
+/**
+ * Surfaces the projection's own partial-availability state and any
+ * observation-completeness limitations on the Focus route — not just the
+ * selected record's own provenance.limitations (ARCHITECT REVIEW finding #3
+ * on PR #5: a partial projection whose selected record has no local
+ * limitation must not lose the global availability/observation warning on
+ * navigation from Overview). Only owner-supplied strings are shown; nothing
+ * here is synthesized. Text already present in the record's own provenance
+ * is not repeated, while preserving first-occurrence order across the
+ * remaining sources. Renders nothing for a fully available projection with
+ * no observation-completeness limitations, so an available projection never
+ * receives a false partial warning.
+ */
+function projectionPartialNotice(projection: SenseiDashboardProjectionV1, record: FocusRecord): HTMLElement | null {
+  const isPartial = projection.availability.state === "partial";
+  const completenessLimitations = projection.assessments.observation_completeness.provenance.limitations ?? [];
+  if (!isPartial && completenessLimitations.length === 0) {
+    return null;
+  }
+
+  const alreadyShown = new Set(record.provenance.limitations ?? []);
+  const extra: string[] = [];
+  const pushUnique = (text: string) => {
+    if (!alreadyShown.has(text) && !extra.includes(text)) extra.push(text);
+  };
+  if (isPartial) {
+    for (const limitation of projection.availability.limitations) pushUnique(limitation);
+  }
+  for (const limitation of completenessLimitations) pushUnique(limitation);
+
+  const wrap = el("div", { className: "focus-partial-notice" });
+  if (isPartial) {
+    wrap.appendChild(
+      statusLine({ label: "Projection availability", state: projection.availability.state, summary: projection.availability.summary })
+    );
+  }
+  if (extra.length > 0) {
+    const list = el("ul", { className: "focus-partial-notice__limitations" });
+    for (const limitation of extra) {
+      list.appendChild(el("li", { text: limitation }));
+    }
+    wrap.appendChild(list);
+  }
+  return wrap;
+}
+
 function sourceLinksSection(record: FocusRecord): HTMLElement | null {
   if (!record.source_links || record.source_links.length === 0) return null;
   const wrap = el("div", { className: "focus-source-links" });
@@ -49,6 +95,9 @@ function foundFocus(container: HTMLElement, record: FocusRecord, projection: Sen
   const index = new ReferenceIndex(projection);
 
   container.appendChild(identityBlock(record));
+
+  const partialNotice = projectionPartialNotice(projection, record);
+  if (partialNotice) container.appendChild(partialNotice);
 
   for (const [label, refs] of [
     ["Owned by", record.owner_refs],

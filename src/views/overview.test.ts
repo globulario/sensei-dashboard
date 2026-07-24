@@ -41,6 +41,9 @@ function baseProjection(overrides: Partial<SenseiDashboardProjectionV1> = {}): S
 }
 
 function mount(): HTMLElement {
+  // Avoid accumulating duplicate ids across tests in the same jsdom
+  // document — see shell.test.ts's mount() for the full rationale.
+  document.body.replaceChildren();
   const container = document.createElement("div");
   document.body.appendChild(container);
   return container;
@@ -260,5 +263,86 @@ describe("renderOverview", () => {
     renderOverview(container, projection);
     expect(container.textContent).toContain("evolution comparison could not be constructed");
     expect(container.querySelector(".status-token--unavailable")).not.toBeNull();
+  });
+
+  // --- Empty evolution message must not imply a complete comparison
+  // (ARCHITECT REVIEW finding #4 on PR #5) ---
+
+  it("never renders 'No changes are recorded between these revisions' for partial evolution with no changes", () => {
+    const container = mount();
+    renderOverview(
+      container,
+      baseProjection({
+        evolution: { availability: "partial", base_revision: "rev.0", head_revision: "rev.1", changes: [] },
+      })
+    );
+    expect(container.textContent).not.toContain("No changes are recorded between these revisions.");
+    expect(container.textContent).toContain("No change records were supplied");
+  });
+
+  it("never renders 'No changes are recorded between these revisions' for unavailable evolution with no changes", () => {
+    const container = mount();
+    renderOverview(
+      container,
+      baseProjection({
+        evolution: { availability: "unavailable", base_revision: "rev.0", head_revision: "rev.1", changes: [] },
+      })
+    );
+    expect(container.textContent).not.toContain("No changes are recorded between these revisions.");
+    expect(container.textContent).toContain("No change records were supplied");
+  });
+
+  it("retains the bounded no-records message for available evolution with no changes", () => {
+    const container = mount();
+    renderOverview(
+      container,
+      baseProjection({
+        evolution: { availability: "available", base_revision: "rev.0", head_revision: "rev.1", changes: [] },
+      })
+    );
+    expect(container.textContent).toContain("No changes are recorded between these revisions.");
+  });
+
+  it("still renders the first-authoritative-projection state for a null base_revision, regardless of availability", () => {
+    for (const availability of ["available", "partial", "unavailable"] as const) {
+      const container = mount();
+      renderOverview(
+        container,
+        baseProjection({
+          evolution: { availability, base_revision: null, head_revision: "rev.1", changes: [] },
+        })
+      );
+      expect(container.textContent).toContain("first authoritative projection");
+      expect(container.textContent).not.toContain("No changes are recorded between these revisions.");
+      expect(container.textContent).not.toContain("No change records were supplied");
+    }
+  });
+
+  // --- Active-context links must use the same safe-link policy as source
+  // links (ARCHITECT REVIEW finding #2 on PR #5) ---
+
+  it("renders a safe https active-context url as a clickable link", () => {
+    const container = mount();
+    renderOverview(
+      container,
+      baseProjection({
+        active_context: { kind: "task", id: "task.1", label: "Investigate boundary pressure", url: "https://example.test/task/1" },
+      })
+    );
+    const link = container.querySelector(".active-context a") as HTMLAnchorElement | null;
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("https://example.test/task/1");
+  });
+
+  it("never renders an unsafe active-context url (javascript:) as a clickable link", () => {
+    const container = mount();
+    renderOverview(
+      container,
+      baseProjection({
+        active_context: { kind: "task", id: "task.1", label: "Investigate boundary pressure", url: "javascript:alert(1)" },
+      })
+    );
+    expect(container.querySelector(".active-context a")).toBeNull();
+    expect(container.textContent).toContain("not rendered");
   });
 });

@@ -57,6 +57,10 @@ function focusRecord(overrides: Partial<FocusRecord> = {}): FocusRecord {
 }
 
 function mount(): HTMLElement {
+  // Avoid accumulating duplicate ids (e.g. handoff-panel controls) across
+  // tests in the same jsdom document — see shell.test.ts's mount() for the
+  // full rationale.
+  document.body.replaceChildren();
   const container = document.createElement("div");
   document.body.appendChild(container);
   return container;
@@ -161,6 +165,21 @@ describe("renderFocus", () => {
     expect(link!.getAttribute("rel")).toContain("noopener");
   });
 
+  it("never renders an unsafe source-link target (javascript:) as a clickable anchor (ARCHITECT REVIEW finding #2 on PR #5)", () => {
+    const record = focusRecord({ source_links: [{ label: "Click me", target: "javascript:alert(document.cookie)" }] });
+    const container = mount();
+    renderFocus(container, { status: "found", record }, baseProjection());
+    expect(container.querySelector(".focus-source-links a")).toBeNull();
+    expect(container.textContent).toContain("not rendered");
+  });
+
+  it("never renders an unsafe source-link target (data:) as a clickable anchor", () => {
+    const record = focusRecord({ source_links: [{ label: "Click me", target: "data:text/html,<script>alert(1)</script>" }] });
+    const container = mount();
+    renderFocus(container, { status: "found", record }, baseProjection());
+    expect(container.querySelector(".focus-source-links a")).toBeNull();
+  });
+
   it("says exactly that the element is missing from the current revision, honestly, for a not_found outcome", () => {
     const container = mount();
     const outcome: FocusOutcome = { status: "not_found", elementId: "component.stale-link" };
@@ -181,6 +200,50 @@ describe("renderFocus", () => {
     const container = mount();
     renderFocus(container, { status: "found", record }, baseProjection());
     expect(container.textContent).toContain("only partially observed");
+  });
+
+  // --- Projection-level partial/observation limitations must remain
+  // visible in Focus, not just the selected record's own provenance
+  // (ARCHITECT REVIEW finding #3 on PR #5) ---
+
+  it("shows the projection's global partial-availability limitations even when the selected record has no local limitations", () => {
+    const record = focusRecord({ provenance: { evidence_refs: [] } });
+    const projection = baseProjection({
+      availability: { state: "partial", summary: "usable but incomplete", limitations: ["regions are not authored"], sources: [] },
+    });
+    const container = mount();
+    renderFocus(container, { status: "found", record }, projection);
+    expect(container.querySelector(".focus-partial-notice")).not.toBeNull();
+    expect(container.textContent).toContain("regions are not authored");
+    expect(container.querySelector(".status-token--partial")).not.toBeNull();
+  });
+
+  it("shows relevant observation-completeness limitations on Focus even for an otherwise-available projection", () => {
+    const record = focusRecord({ provenance: { evidence_refs: [] } });
+    const projection = baseProjection();
+    projection.assessments.observation_completeness.provenance.limitations = ["runtime evidence only partially sampled"];
+    const container = mount();
+    renderFocus(container, { status: "found", record }, projection);
+    expect(container.textContent).toContain("runtime evidence only partially sampled");
+  });
+
+  it("does not duplicate a limitation the selected record's own provenance already states", () => {
+    const record = focusRecord({ provenance: { evidence_refs: [], limitations: ["shared limitation text"] } });
+    const projection = baseProjection({
+      availability: { state: "partial", summary: "s", limitations: ["shared limitation text", "availability-only limitation"], sources: [] },
+    });
+    const container = mount();
+    renderFocus(container, { status: "found", record }, projection);
+    const occurrences = container.textContent!.split("shared limitation text").length - 1;
+    expect(occurrences).toBe(1);
+    expect(container.textContent).toContain("availability-only limitation");
+  });
+
+  it("renders no partial notice at all for a fully available projection with no observation-completeness limitations", () => {
+    const record = focusRecord({ provenance: { evidence_refs: [] } });
+    const container = mount();
+    renderFocus(container, { status: "found", record }, baseProjection());
+    expect(container.querySelector(".focus-partial-notice")).toBeNull();
   });
 
   it("renders no Ask Agent panel when capabilities.agent_handoff is absent or 'none'", () => {

@@ -59,6 +59,11 @@ function selection(): HandoffSelection {
 }
 
 function mount(): HTMLElement {
+  // Every panel render creates id="handoff-intent"/"handoff-lens"/etc.
+  // elements; leaving prior tests' containers attached piles up duplicate
+  // ids in the same document, which makes id-based queries unreliable even
+  // when scoped to a specific container's subtree.
+  document.body.replaceChildren();
   const container = document.createElement("div");
   document.body.appendChild(container);
   return container;
@@ -149,14 +154,58 @@ describe("renderHandoffPanel", () => {
     expect(envelope.selected_element).toEqual({ id: "component.a", kind: "component" });
   });
 
-  it("fixes the lens to the visible default 'structure' with no interactive lens picker", () => {
+  it("defaults the explicit lens control to the visible default 'structure' (ARCHITECT REVIEW finding #1)", () => {
     const container = mount();
     renderHandoffPanel(container, baseProjection(), selection());
-    expect(container.textContent).toContain("Lens: structure");
-    expect(container.querySelector("select[id='handoff-lens']")).toBeNull();
+    const lensSelect = container.querySelector<HTMLSelectElement>("#handoff-lens");
+    expect(lensSelect).not.toBeNull();
+    expect(lensSelect!.value).toBe("structure");
     const preview = container.querySelector(".handoff-panel__preview");
     const envelope = JSON.parse(preview!.textContent ?? "{}");
     expect(envelope.lens).toBe("structure");
+  });
+
+  it("offers exactly the six canonical contract lens identifiers, unrelabeled", () => {
+    const container = mount();
+    renderHandoffPanel(container, baseProjection(), selection());
+    const values = Array.from(container.querySelectorAll<HTMLOptionElement>("#handoff-lens option")).map((o) => o.value);
+    expect(values).toEqual(["structure", "authority", "behavior", "risk", "change", "closure"]);
+  });
+
+  it("binds the exported envelope to the explicit lens selection when changed (authority, change)", () => {
+    const container = mount();
+    renderHandoffPanel(container, baseProjection(), selection());
+    const lensSelect = container.querySelector<HTMLSelectElement>("#handoff-lens")!;
+
+    lensSelect.value = "authority";
+    lensSelect.dispatchEvent(new Event("change"));
+    let preview = container.querySelector(".handoff-panel__preview");
+    expect(JSON.parse(preview!.textContent ?? "{}").lens).toBe("authority");
+
+    lensSelect.value = "change";
+    lensSelect.dispatchEvent(new Event("change"));
+    preview = container.querySelector(".handoff-panel__preview");
+    expect(JSON.parse(preview!.textContent ?? "{}").lens).toBe("change");
+  });
+
+  it("disables export when the lens value is not one of the six contract identifiers", () => {
+    const container = mount();
+    renderHandoffPanel(container, baseProjection(), selection());
+    const lensSelect = container.querySelector<HTMLSelectElement>("#handoff-lens")!;
+
+    // Only reachable by manipulating the <select> value directly — the
+    // rendered <option>s only ever offer the six canonical lens ids — but
+    // this proves the export gate rejects an out-of-contract value rather
+    // than trusting it.
+    Object.defineProperty(lensSelect, "value", { value: "not-a-lens", writable: true });
+    lensSelect.dispatchEvent(new Event("change"));
+
+    const copyButton = container.querySelector<HTMLButtonElement>(".handoff-panel__copy")!;
+    const downloadButton = container.querySelector<HTMLButtonElement>(".handoff-panel__download")!;
+    expect(copyButton.disabled).toBe(true);
+    expect(downloadButton.disabled).toBe(true);
+    const diagnostic = container.querySelector(".handoff-panel__diagnostic");
+    expect(diagnostic!.textContent).not.toBe("");
   });
 
   it("copies the exact previewed envelope JSON to the clipboard on Copy", async () => {

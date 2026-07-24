@@ -1,0 +1,23 @@
+{
+  "schema_version": "sensei.dashboard.projection.v1",
+  "identity": {
+    "projection_id": "projection.synthetic-invalid-fixture",
+    "repository": { "key": "example/synthetic", "display_name": "SYNTHETIC INVALID TEST FIXTURE" },
+    "revision": { "id": "0000000000000000000000000000000000invd" },
+    "graph_authority": { "observed": "yes", "current": "not-a-real-tristate-value", "identity": null, "summary": "synthetic" },
+    "generated_at": "2026-07-24T00:00:00Z"
+  },
+  "availability": { "state": "available", "summary": "synthetic", "limitations": [], "sources": [] },
+  "assessments": {
+    "architecture_health": { "state": "healthy", "label": "h", "summary": "s", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "projection_integrity": { "state": "healthy", "label": "i", "summary": "s", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "observation_completeness": { "state": "healthy", "label": "o", "summary": "s", "severity": "not_applicable", "coverage": { "observed": null, "total": null, "unit": "u" }, "provenance": { "evidence_refs": [] } }
+  },
+  "briefing": [],
+  "regions": [],
+  "components": [],
+  "boundaries": [],
+  "contracts": [],
+  "flows": [],
+  "attention": []
+}

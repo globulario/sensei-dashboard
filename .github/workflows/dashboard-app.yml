@@ -1,0 +1,53 @@
+name: dashboard-app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "docs/*.schema.json"
+      - "docs/fixtures/dashboard-projection/**"
+      - "contract/generated/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dashboard-app.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "docs/*.schema.json"
+      - "docs/fixtures/dashboard-projection/**"
+      - "contract/generated/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dashboard-app.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Type-check (lint gate for Stage 1 — see docs/architecture-stage-1-notes.md)
+        run: npm run typecheck
+
+      - name: Unit + adapter + router + honest-state tests
+        run: npm run test:app
+
+      - name: Production build
+        run: npm run build

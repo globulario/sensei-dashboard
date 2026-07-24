@@ -1,0 +1,44 @@
+{
+  "schema_version": "sensei.dashboard.projection.v1",
+  "identity": {
+    "projection_id": "projection.synthetic-available-fixture",
+    "repository": { "key": "example/synthetic", "display_name": "SYNTHETIC TEST FIXTURE — not a real repository" },
+    "revision": { "id": "0000000000000000000000000000000000synth" },
+    "graph_authority": { "observed": "yes", "current": "yes", "identity": null, "summary": "synthetic fixture, not real evidence" },
+    "generated_at": "2026-07-24T00:00:00Z"
+  },
+  "availability": {
+    "state": "available",
+    "summary": "SYNTHETIC: demonstrates the fully-available honest state for Stage 1 UI development. No accepted Sensei fixture currently reports 'available' (regions/flows/architecture_health are honestly incomplete in every real projection) — this fixture exists only so the 'available' rendering path has something to render against.",
+    "limitations": [],
+    "sources": [{ "owner": "synthetic", "availability": "available", "summary": "hand-authored test fixture" }]
+  },
+  "assessments": {
+    "architecture_health": { "state": "healthy", "label": "Architecture health", "summary": "synthetic", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "projection_integrity": { "state": "healthy", "label": "Projection integrity", "summary": "synthetic", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "observation_completeness": {
+      "state": "healthy", "label": "Observation completeness", "summary": "synthetic", "severity": "not_applicable",
+      "coverage": { "observed": 1, "total": 1, "unit": "synthetic elements" }, "provenance": { "evidence_refs": [] }
+    }
+  },
+  "active_context": null,
+  "briefing": [
+    { "id": "briefing.synthetic", "kind": "orientation", "text": "This is a synthetic, hand-authored test fixture used only to demonstrate the fully-available UI state. It is not real Sensei output.", "severity": "info", "element_refs": [], "provenance": { "evidence_refs": [] } }
+  ],
+  "regions": [
+    { "id": "region.synthetic", "name": "Synthetic Region", "responsibility": "Demonstrates region rendering.", "state": "healthy", "component_refs": ["component.synthetic"], "visual_anchor": { "order": 0 }, "provenance": { "evidence_refs": [] } }
+  ],
+  "components": [
+    { "id": "component.synthetic", "name": "Synthetic Component", "region_ref": "region.synthetic", "responsibility": "Demonstrates component rendering.", "state": "healthy", "authority_refs": [], "visual_anchor": { "order": 0 }, "provenance": { "evidence_refs": [] } }
+  ],
+  "boundaries": [],
+  "contracts": [],
+  "flows": [],
+  "attention": [],
+  "evolution": { "availability": "available", "base_revision": null, "head_revision": "0000000000000000000000000000000000synth", "changes": [] },
+  "focus_records": [
+    { "element_ref": "region.synthetic", "element_kind": "region", "name": "Synthetic Region", "responsibility": "Demonstrates region rendering.", "state": "healthy", "owner_refs": [], "owned_refs": ["component.synthetic"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "component.synthetic", "element_kind": "component", "name": "Synthetic Component", "responsibility": "Demonstrates component rendering.", "state": "healthy", "owner_refs": [], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } }
+  ],
+  "capabilities": { "live_refresh": false, "revision_compare": false, "agent_handoff": "none", "source_deep_links": false }
+}

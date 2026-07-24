@@ -25,6 +25,26 @@ The project is currently in its design-contract phase. No frontend framework has
 - [Claude Stage 1 implementation brief](docs/claude-stage-1-brief.md)
 - [Tracking issue #1](https://github.com/globulario/sensei-dashboard/issues/1)
 
+## Contract tooling
+
+`globulario/sensei` is now the canonical producer of both schemas above
+([sensei#116](https://github.com/globulario/sensei/pull/116)). This
+repository pins the exact adopted commit, verifies digest parity against it
+in CI, imports the accepted fixtures, and generates TypeScript types from
+the pinned schemas — see [`contract/PARITY.md`](contract/PARITY.md) for the
+full handshake.
+
+```bash
+npm ci
+npm run verify:pin      # local digests + live cross-repo parity + schema validation
+npm run generate:types  # regenerate contract/generated/*.ts
+npm test
+```
+
+No application code lives here yet — `contract/` and `docs/fixtures/` are
+consumer-side contract tooling only. The Stage 1 Vite shell begins only
+after this lands.
+
 ## Planned product shape
 
 The canonical interface will be a standalone TypeScript web application built with Vite. The same application will support:

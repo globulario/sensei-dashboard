@@ -12,6 +12,7 @@
 //   -------------------------------|----------------|------------------------
 //   contract.source_ref/target_ref | stableId       | Component only
 //   flow.steps[*].element_ref      | stableId       | Component only
+//   flow.steps[*].contract_ref     | stableId|null  | Contract only
 //   contract.boundary_refs         | refs           | Boundary only
 //   component.authority_refs       | refs           | Boundary only
 //   boundary.member_refs           | refs           | Component only
@@ -258,11 +259,10 @@ export function routeFlows(
   componentRectById: ReadonlyMap<string, Rect>,
   componentLaneGutterX: ReadonlyMap<string, number>,
   contractsById: ReadonlyMap<string, unknown>,
+  idKind: ReadonlyMap<string, ResolvableKind>,
   boundsSoFar: Rect
 ): { flows: MapFlowPath[]; diagnostics: MapDiagnostic[] } {
   const diagnostics: MapDiagnostic[] = [];
-  const idKindComponentOnly = new Map<string, ResolvableKind>();
-  for (const id of componentRectById.keys()) idKindComponentOnly.set(id, "component");
 
   const sortedFlows = [...flows].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const baseRowY = boundsSoFar.y + boundsSoFar.height + C.FLOW_GUTTER_ROW_HEIGHT / 2;
@@ -288,13 +288,27 @@ export function routeFlows(
     const sortedSteps = [...flow.steps].sort((a, b) => (a.order !== b.order ? a.order - b.order : a.element_ref < b.element_ref ? -1 : a.element_ref > b.element_ref ? 1 : 0));
 
     const stepPoints: MapFlowStepPoint[] = sortedSteps.map((step) => {
-      const rect = resolveComponentEndpoint("flow", flow.id, "steps[].element_ref", step.element_ref, idKindComponentOnly, componentRectById, diagnostics);
+      // Full projection-wide idKind (region/component/boundary), not a
+      // component-only reconstruction — ARCHITECT REVIEW (second pass) on
+      // PR #6: a locally-rebuilt component-only lookup can never
+      // distinguish "this id doesn't exist" from "this id is a real
+      // Region/Boundary", so every non-Component reference was
+      // misclassified as unresolved_reference instead of
+      // unrendered_reference_kind. Using the same projection-wide map the
+      // rest of this file already resolves against fixes that for both
+      // element_ref (here) and contract_ref (below).
+      const rect = resolveComponentEndpoint("flow", flow.id, "steps[].element_ref", step.element_ref, idKind, componentRectById, diagnostics);
       let contractId: string | null = null;
       if (step.contract_ref) {
         if (contractsById.has(step.contract_ref)) {
           contractId = step.contract_ref;
         } else {
-          diagnostics.push(unresolvedReference("flow", flow.id, "steps[].contract_ref", step.contract_ref));
+          const kind = idKind.get(step.contract_ref);
+          if (kind === undefined) {
+            diagnostics.push(unresolvedReference("flow", flow.id, "steps[].contract_ref", step.contract_ref));
+          } else {
+            diagnostics.push(unrenderedReferenceKind("flow", flow.id, "steps[].contract_ref", step.contract_ref, ["contract"], kind));
+          }
         }
       }
       return {

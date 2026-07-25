@@ -224,23 +224,23 @@ describe("routeFlows", () => {
   }
 
   it("preserves step order from the explicit `order` field, not array position", () => {
-    const { rectById } = twoComponentSetup();
+    const { rectById, idKind } = twoComponentSetup();
     const f = flow("flow.x", [
       { order: 2, element_ref: "component.b" },
       { order: 1, element_ref: "component.a" },
     ]);
-    const result = routeFlows([f], rectById, new Map(), new Map(), { x: 0, y: 0, width: 0, height: 0 });
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
     expect(result.flows[0]!.steps.map((s) => s.elementId)).toEqual(["component.a", "component.b"]);
   });
 
   it("connects only consecutive resolved steps — an unresolved middle step breaks only that segment", () => {
-    const { rectById } = twoComponentSetup();
+    const { rectById, idKind } = twoComponentSetup();
     const f = flow("flow.x", [
       { order: 1, element_ref: "component.a" },
       { order: 2, element_ref: "component.ghost" },
       { order: 3, element_ref: "component.b" },
     ]);
-    const result = routeFlows([f], rectById, new Map(), new Map(), { x: 0, y: 0, width: 0, height: 0 });
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
     expect(result.flows[0]!.segments).toHaveLength(0);
     expect(result.diagnostics.some((d) => d.kind === "unresolved_reference")).toBe(true);
     const middleStep = result.flows[0]!.steps.find((s) => s.elementId === "component.ghost");
@@ -248,30 +248,72 @@ describe("routeFlows", () => {
     expect(middleStep?.point).toBeNull();
   });
 
+  // ARCHITECT REVIEW (second pass) on PR #6: routeFlows previously
+  // rebuilt its own component-only idKind map internally, so it could
+  // never distinguish "this id doesn't exist" from "this id is a real
+  // Region/Boundary" — every non-Component element_ref was misclassified
+  // as unresolved_reference. Fixed by threading the full projection-wide
+  // idKind map through instead of reconstructing a narrower one.
   it("a step naming a real Region (not a Component) is unrendered_reference_kind, not unresolved_reference", () => {
     const { rectById, idKind } = twoComponentSetup();
-    void idKind;
     const f = flow("flow.x", [{ order: 1, element_ref: "region.a" }]);
-    // routeFlows resolves purely against componentRectById-derived kinds,
-    // so a Region id here behaves as "exists but wrong kind" only when the
-    // caller's idKind map also knows about it — routeFlows builds its own
-    // component-only idKind internally, so from its perspective a region id
-    // it has never seen is indistinguishable from truly nonexistent. This
-    // is intentional: routeFlows's own resolution scope is components only,
-    // by construction, so it cannot itself distinguish "real region" from
-    // "made up id" without the full idKind map. That distinction is proven
-    // at the model.ts orchestration level instead (model.test.ts).
-    const result = routeFlows([f], rectById, new Map(), new Map(), { x: 0, y: 0, width: 0, height: 0 });
-    expect(result.diagnostics.some((d) => d.kind === "unresolved_reference")).toBe(true);
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "steps[].element_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+    const step = result.flows[0]!.steps.find((s) => s.elementId === "region.a");
+    expect(step?.resolved).toBe(false);
+    expect(step?.point).toBeNull();
+  });
+
+  it("a step naming a real Boundary (not a Component) is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const boundaries = [boundary("boundary.b", [])];
+    const idKind = idKindFor(regions, components, boundaries);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const f = flow("flow.x", [{ order: 1, element_ref: "boundary.b" }]);
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "steps[].element_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+
+  it("a step's contract_ref naming a real Component (not a Contract) is unrendered_reference_kind, not unresolved_reference", () => {
+    const { rectById, idKind } = twoComponentSetup();
+    const f = flow("flow.x", [{ order: 1, element_ref: "component.a", contract_ref: "component.b" }]);
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "steps[].contract_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+    expect(result.flows[0]!.steps[0]!.contractId).toBeNull();
+  });
+
+  it("a step's contract_ref naming an id that truly doesn't exist anywhere is still unresolved_reference", () => {
+    const { rectById, idKind } = twoComponentSetup();
+    const f = flow("flow.x", [{ order: 1, element_ref: "component.a", contract_ref: "contract.ghost" }]);
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "steps[].contract_ref");
+    expect(d?.kind).toBe("unresolved_reference");
+  });
+
+  it("a step's contract_ref naming a real Contract resolves normally", () => {
+    const { rectById, idKind } = twoComponentSetup();
+    const contractsById = new Map([["contract.real", {}]]);
+    const f = flow("flow.x", [{ order: 1, element_ref: "component.a", contract_ref: "contract.real" }]);
+    const result = routeFlows([f], rectById, new Map(), contractsById, idKind, { x: 0, y: 0, width: 0, height: 0 });
+    expect(result.flows[0]!.steps[0]!.contractId).toBe("contract.real");
+    expect(result.diagnostics).toEqual([]);
   });
 
   it("diagnoses duplicate step order without silently picking a sequence", () => {
-    const { rectById } = twoComponentSetup();
+    const { rectById, idKind } = twoComponentSetup();
     const f = flow("flow.x", [
       { order: 1, element_ref: "component.a" },
       { order: 1, element_ref: "component.b" },
     ]);
-    const result = routeFlows([f], rectById, new Map(), new Map(), { x: 0, y: 0, width: 0, height: 0 });
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
     expect(result.diagnostics.some((d) => d.kind === "duplicate_flow_step_order")).toBe(true);
   });
 });

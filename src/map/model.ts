@@ -264,7 +264,7 @@ export function buildArchitectureMapModel(projection: SenseiDashboardProjectionV
 
   const afterContractsBounds = unionRect([contentBounds, ...contractsResult.contracts.map((c) => routeBoundsOf(c.route))]);
 
-  const flowsResult = routeFlows(projection.flows, componentRectById, componentLaneGutterX, contractsById, afterContractsBounds);
+  const flowsResult = routeFlows(projection.flows, componentRectById, componentLaneGutterX, contractsById, idKind, afterContractsBounds);
 
   const afterFlowsBounds = unionRect([
     afterContractsBounds,

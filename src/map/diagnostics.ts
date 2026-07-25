@@ -5,17 +5,33 @@
 // this module is imported by the pure model/layout/routing modules, which
 // must stay free of DOM/transport dependencies (deliverable 10).
 //
-// Two distinct "the reference didn't work" shapes are kept separate rather
-// than collapsed into one generic "unresolved" diagnostic, because they mean
-// different things to whoever reads them: `unresolved_reference` is "this id
-// does not exist anywhere in the projection", `wrong_kind_reference` is "this
-// id exists, but as a kind this field is not permitted to point at" (e.g. a
-// contract's source_ref naming a real Region id — contracts may only
-// reference components; see routing.ts).
+// Three distinct "the reference didn't work" shapes are kept separate
+// rather than collapsed into one generic "unresolved" diagnostic, because
+// they mean different things to whoever reads them:
+//
+// - `unresolved_reference`: this id does not exist anywhere in the
+//   projection at all. Always a genuine data problem.
+// - `wrong_kind_reference`: this id exists, but as a kind the *contract*
+//   itself defines this field to mean something else — currently only
+//   `component.region_ref`, which the product doc unambiguously defines as
+//   "the region this component belongs to." A region_ref naming a
+//   Component or Boundary id can't be reinterpreted any other way, so this
+//   stays a genuine data problem too.
+// - `unrendered_reference_kind`: this id exists and is *valid* data — the
+//   pinned schema (docs/dashboard-projection-v1.schema.json) declares
+//   source_ref/target_ref/element_ref/authority_refs/boundary_refs/
+//   member_refs as generic stableId with no kind restriction anywhere, and
+//   neither the schema nor architecture-dashboard-v1.md documents one. This
+//   build's routing/geometry only knows how to draw a route for specific
+//   kinds in each position (e.g. a Component for a contract endpoint) —
+//   when a reference resolves to a different, real object, that is this
+//   build's rendering limitation, not the producer's error. Never collapse
+//   this into `wrong_kind_reference`, which reads as "the data is wrong."
 
 export type MapDiagnosticKind =
   | "unresolved_reference"
   | "wrong_kind_reference"
+  | "unrendered_reference_kind"
   | "membership_mismatch"
   | "duplicate_flow_step_order";
 
@@ -34,8 +50,9 @@ export interface UnresolvedReferenceDiagnostic extends DiagnosticBase {
   unresolvedId: string;
 }
 
-/** The referenced id exists, but names an object of a kind this field is not
- * permitted to resolve against (see routing.ts's endpoint-resolution scope). */
+/** The referenced id exists, but names an object of a kind the *contract*
+ * defines this field to mean something else (currently region_ref only —
+ * see the module header comment). */
 export interface WrongKindReferenceDiagnostic extends DiagnosticBase {
   kind: "wrong_kind_reference";
   sourceKind: string;
@@ -43,6 +60,19 @@ export interface WrongKindReferenceDiagnostic extends DiagnosticBase {
   field: string;
   referencedId: string;
   expectedKind: string;
+  actualKind: string;
+}
+
+/** The referenced id exists and is valid data, but resolves to a kind this
+ * build's routing does not currently draw geometry for in this position —
+ * a rendering limitation, not a producer-data problem (see module header). */
+export interface UnrenderedReferenceKindDiagnostic extends DiagnosticBase {
+  kind: "unrendered_reference_kind";
+  sourceKind: string;
+  sourceId: string;
+  field: string;
+  referencedId: string;
+  renderedKinds: readonly string[];
   actualKind: string;
 }
 
@@ -72,6 +102,7 @@ export interface DuplicateFlowStepOrderDiagnostic extends DiagnosticBase {
 export type MapDiagnostic =
   | UnresolvedReferenceDiagnostic
   | WrongKindReferenceDiagnostic
+  | UnrenderedReferenceKindDiagnostic
   | MembershipMismatchDiagnostic
   | DuplicateFlowStepOrderDiagnostic;
 
@@ -110,6 +141,27 @@ export function wrongKindReference(
     expectedKind,
     actualKind,
     message: `${sourceKind} "${sourceId}" field "${field}" references "${referencedId}", which is a ${actualKind} — this field only resolves ${expectedKind} ids; the map omitted the unresolved geometry.`,
+  };
+}
+
+export function unrenderedReferenceKind(
+  sourceKind: string,
+  sourceId: string,
+  field: string,
+  referencedId: string,
+  renderedKinds: readonly string[],
+  actualKind: string
+): UnrenderedReferenceKindDiagnostic {
+  return {
+    id: `diagnostic.unrendered_reference_kind.${sourceKind}.${sourceId}.${field}.${referencedId}`,
+    kind: "unrendered_reference_kind",
+    sourceKind,
+    sourceId,
+    field,
+    referencedId,
+    renderedKinds,
+    actualKind,
+    message: `${sourceKind} "${sourceId}" field "${field}" references "${referencedId}", a real ${actualKind} — valid data, but this build only draws geometry for a ${renderedKinds.join(" or ")} in this position; the map omitted the geometry (not a producer-data error).`,
   };
 }
 

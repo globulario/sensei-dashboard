@@ -21,7 +21,7 @@ import type {
 } from "../../contract/generated/dashboard-projection-v1.js";
 import type { MapDiagnostic } from "./diagnostics.js";
 import { placeMap } from "./layout.js";
-import { routeContracts, routeFlows, routeBoundaries } from "./routing.js";
+import { routeContracts, routeFlows, routeBoundaries, routeAuthorityConnectors } from "./routing.js";
 
 export interface Rect {
   x: number;
@@ -84,9 +84,24 @@ export interface MapComponentNode {
 
 export interface MapBoundaryConnector {
   memberId: string;
-  /** Point on the member component's rect edge nearest the rail — the
-   * connector line's other endpoint is the rail row itself. */
-  point: RoutePoint;
+  /** Full route from the member component's own lane gutter down to the
+   * rail row (see routing.ts's gutter-drop pattern) — never a straight line
+   * from the member's own x, which could cross a sibling component stacked
+   * below it in the same region/lane. */
+  route: RoutePath;
+}
+
+/** A `component.authority_refs` connector — a distinct signal from
+ * `boundary.member_refs` membership (brief §3.3), so kept as its own
+ * top-level relationship collection rather than nested under either side.
+ * Computed in routing.ts, never in render-svg.ts (brief deliverable 10:
+ * "the pure map model/layout owner has no DOM or transport dependency" —
+ * all geometry, including this one, belongs to the pure model). */
+export interface MapAuthorityConnector {
+  id: string;
+  componentId: string;
+  boundaryId: string;
+  route: RoutePath;
 }
 
 export interface MapBoundary {
@@ -162,6 +177,7 @@ export interface ArchitectureMapModel {
   regions: MapRegionNode[];
   components: MapComponentNode[];
   boundaries: MapBoundary[];
+  authorityConnectors: MapAuthorityConnector[];
   contracts: MapContractEdge[];
   flows: MapFlowPath[];
   diagnostics: MapDiagnostic[];
@@ -255,11 +271,21 @@ export function buildArchitectureMapModel(projection: SenseiDashboardProjectionV
     ...flowsResult.flows.flatMap((f) => f.segments.map((s) => routeBoundsOf(s.route))),
   ]);
 
-  const boundariesResult = routeBoundaries(projection.boundaries, componentRectById, idKind, afterFlowsBounds);
+  const boundariesResult = routeBoundaries(
+    projection.boundaries,
+    componentRectById,
+    componentLaneGutterX,
+    idKind,
+    afterFlowsBounds
+  );
+
+  const boundaryRailRectById = new Map(boundariesResult.boundaries.map((b) => [b.id, b.railRect]));
+  const authorityConnectors = routeAuthorityConnectors(layout.componentNodes, componentLaneGutterX, boundaryRailRectById);
 
   const boundsRects = [
     afterFlowsBounds,
     ...boundariesResult.boundaries.map((b) => b.railRect),
+    ...authorityConnectors.map((c) => routeBoundsOf(c.route)),
   ];
   const bounds = padRect(unionRect(boundsRects), VIEWBOX_MARGIN);
 
@@ -270,6 +296,7 @@ export function buildArchitectureMapModel(projection: SenseiDashboardProjectionV
     regions: layout.regionNodes,
     components: layout.componentNodes,
     boundaries: boundariesResult.boundaries,
+    authorityConnectors,
     contracts: contractsResult.contracts,
     flows: flowsResult.flows,
     diagnostics: [...layout.diagnostics, ...contractsResult.diagnostics, ...flowsResult.diagnostics, ...boundariesResult.diagnostics],

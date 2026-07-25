@@ -13,7 +13,7 @@
 import type { Region, Component } from "../../contract/generated/dashboard-projection-v1.js";
 import type { ResolvableKind, Rect, MapLane, MapRegionNode, MapComponentNode } from "./model.js";
 import type { MapDiagnostic } from "./diagnostics.js";
-import { unresolvedReference, wrongKindReference, membershipMismatch } from "./diagnostics.js";
+import { unresolvedReference, wrongKindReference, unrenderedReferenceKind, membershipMismatch } from "./diagnostics.js";
 
 export const LAYOUT_CONSTANTS = {
   COMPONENT_WIDTH: 220,
@@ -172,10 +172,14 @@ function resolveComponentRegions(
   return { componentsByRegionId, diagnostics };
 }
 
-/** Resolves each component's `authority_refs` against Boundary ids only
- * (the only kind that field may name — see routing.ts's endpoint-
- * resolution-scope comment). Unresolved/wrong-kind entries are diagnostics,
- * never dropped silently and never coerced into a different kind. */
+/** Resolves each component's `authority_refs`. The pinned schema declares
+ * this field as generic `refs` (stableId array) with no kind restriction —
+ * a component naming a real Region or another Component here is valid
+ * data, just not something this build currently draws a connector for
+ * (`unrendered_reference_kind`, not a data error). Only a genuinely
+ * unresolved id — absent from the projection entirely — is
+ * `unresolved_reference`. Boundary-kind entries are the only ones this
+ * build renders authority connectors for (see routing.ts). */
 function resolveComponentAuthorityRefs(
   components: readonly Component[],
   idKind: ReadonlyMap<string, ResolvableKind>
@@ -191,7 +195,7 @@ function resolveComponentAuthorityRefs(
         continue;
       }
       if (kind !== "boundary") {
-        diagnostics.push(wrongKindReference("component", c.id, "authority_refs", refId, "boundary", kind));
+        diagnostics.push(unrenderedReferenceKind("component", c.id, "authority_refs", refId, ["boundary"], kind));
         continue;
       }
       resolved.push(refId);

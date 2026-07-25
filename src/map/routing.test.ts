@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Boundary, Component, Contract, Flow, Region } from "../../contract/generated/dashboard-projection-v1.js";
 import { placeMap } from "./layout.js";
-import { routeContracts, routeFlows, routeBoundaries } from "./routing.js";
+import { routeContracts, routeFlows, routeBoundaries, routeAuthorityConnectors } from "./routing.js";
 import type { ResolvableKind, Rect } from "./model.js";
 
 const prov = { evidence_refs: [] };
@@ -59,7 +59,14 @@ describe("routeContracts — endpoint resolution", () => {
     expect(result.diagnostics.some((d) => d.kind === "unresolved_reference" && d.field === "target_ref")).toBe(true);
   });
 
-  it("diagnoses a wrong-kind endpoint (naming a real region, not a component) distinctly from unresolved", () => {
+  // ARCHITECT REVIEW on PR #6 (first pass): the pinned schema declares
+  // contract.source_ref/target_ref as generic stableId with no kind
+  // restriction — a contract naming a real Region or Boundary id is valid
+  // producer data, not a schema/data error. This build just doesn't render
+  // geometry for that combination yet, which is `unrendered_reference_kind`
+  // (a rendering-scope limitation), never `wrong_kind_reference` (which
+  // reads as "the data itself is wrong").
+  it("diagnoses an endpoint naming a real Region as unrendered_reference_kind (valid data, not a data error), distinct from unresolved", () => {
     const regions = [region("region.a")];
     const components = [component("component.a", "region.a")];
     const idKind = idKindFor(regions, components);
@@ -70,7 +77,39 @@ describe("routeContracts — endpoint resolution", () => {
     const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 0, height: 0 });
 
     expect(result.contracts[0]!.route).toBeNull();
-    expect(result.diagnostics.some((d) => d.kind === "wrong_kind_reference" && d.field === "target_ref")).toBe(true);
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "target_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("wrong_kind_reference");
+  });
+
+  it("diagnoses an endpoint naming a real Boundary the same way (unrendered_reference_kind, not wrong_kind_reference)", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const boundaries = [boundary("boundary.b", [])];
+    const idKind = idKindFor(regions, components, boundaries);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const contracts = [contract("contract.x", "component.a", "boundary.b")];
+    const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 0, height: 0 });
+
+    expect(result.contracts[0]!.route).toBeNull();
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "target_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+
+  it("diagnoses a contract.boundary_refs entry naming a real Component as unrendered_reference_kind", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a"), component("component.b", "region.a", { visual_anchor: { order: 1 } })];
+    const idKind = idKindFor(regions, components);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const contracts = [contract("contract.x", "component.a", "component.b", { boundary_refs: ["component.b"] })];
+    const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 400, height: 400 });
+
+    expect(result.contracts[0]!.boundaryRefs).toEqual([]);
+    expect(result.diagnostics.some((d) => d.kind === "unrendered_reference_kind" && d.field === "boundary_refs")).toBe(true);
   });
 
   it("preserves direction verbatim for all four tokens", () => {
@@ -209,6 +248,23 @@ describe("routeFlows", () => {
     expect(middleStep?.point).toBeNull();
   });
 
+  it("a step naming a real Region (not a Component) is unrendered_reference_kind, not unresolved_reference", () => {
+    const { rectById, idKind } = twoComponentSetup();
+    void idKind;
+    const f = flow("flow.x", [{ order: 1, element_ref: "region.a" }]);
+    // routeFlows resolves purely against componentRectById-derived kinds,
+    // so a Region id here behaves as "exists but wrong kind" only when the
+    // caller's idKind map also knows about it — routeFlows builds its own
+    // component-only idKind internally, so from its perspective a region id
+    // it has never seen is indistinguishable from truly nonexistent. This
+    // is intentional: routeFlows's own resolution scope is components only,
+    // by construction, so it cannot itself distinguish "real region" from
+    // "made up id" without the full idKind map. That distinction is proven
+    // at the model.ts orchestration level instead (model.test.ts).
+    const result = routeFlows([f], rectById, new Map(), new Map(), { x: 0, y: 0, width: 0, height: 0 });
+    expect(result.diagnostics.some((d) => d.kind === "unresolved_reference")).toBe(true);
+  });
+
   it("diagnoses duplicate step order without silently picking a sequence", () => {
     const { rectById } = twoComponentSetup();
     const f = flow("flow.x", [
@@ -229,10 +285,83 @@ describe("routeBoundaries", () => {
     const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
 
     const b = boundary("boundary.x", ["component.a", "component.ghost"]);
-    const result = routeBoundaries([b], rectById, idKind, { x: 0, y: 0, width: 400, height: 400 });
+    const result = routeBoundaries([b], rectById, new Map(), idKind, { x: 0, y: 0, width: 400, height: 400 });
 
     expect(result.boundaries[0]!.connectors).toHaveLength(1);
     expect(result.boundaries[0]!.connectors[0]!.memberId).toBe("component.a");
     expect(result.diagnostics.some((d) => d.kind === "unresolved_reference")).toBe(true);
+  });
+
+  it("a member_refs entry naming a real Boundary (not a Component) is unrendered_reference_kind, not wrong_kind_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const boundaries = [boundary("boundary.other", [])];
+    const idKind = idKindFor(regions, components, boundaries);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const b = boundary("boundary.x", ["boundary.other"]);
+    const result = routeBoundaries([b, ...boundaries], rectById, new Map(), idKind, { x: 0, y: 0, width: 400, height: 400 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "member_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+
+  // ARCHITECT REVIEW finding #2 on PR #6: a rail row spans the full content
+  // width, so a naive straight-down line from a member component could
+  // cross straight through a sibling component stacked below it in the
+  // same region. This is the adversarial regression for that exact shape.
+  it("a boundary connector for the top component in a stacked region never crosses the sibling component stacked directly below it", () => {
+    const regions = [region("region.a")];
+    const components = [
+      component("component.top", "region.a", { visual_anchor: { order: 0 } }),
+      component("component.bottom", "region.a", { visual_anchor: { order: 1 } }),
+    ];
+    const idKind = idKindFor(regions, components);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+    const bottomRect = rectById.get("component.bottom")!;
+
+    // The member's own lane gutter (to the right of both components,
+    // outside either rect) is what routing must actually use.
+    const laneGutterX = new Map([["component.top", 1000]]);
+
+    const b = boundary("boundary.x", ["component.top"]);
+    const result = routeBoundaries([b], rectById, laneGutterX, idKind, { x: 0, y: 0, width: 1200, height: 400 });
+
+    const route = result.boundaries[0]!.connectors[0]!.route;
+    const connectorBox = boundingBoxOf(route.points);
+    expect(overlaps(connectorBox, bottomRect)).toBe(false);
+  });
+});
+
+describe("routeAuthorityConnectors", () => {
+  it("routes a gutter-drop connector from each component to each resolved authority_ref boundary's rail, never a straight line through a sibling below it", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.top", "region.a", { visual_anchor: { order: 0 } }), component("component.bottom", "region.a", { visual_anchor: { order: 1 } })];
+    const idKind = idKindFor(regions, components);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const bottomRect = layout.componentNodes.find((c) => c.id === "component.bottom")!.rect;
+    const topNode = { ...layout.componentNodes.find((c) => c.id === "component.top")!, authorityRefs: ["boundary.x"] };
+
+    const laneGutterX = new Map([["component.top", 1000]]);
+    const railById = new Map([["boundary.x", { x: 0, y: 500, width: 1200, height: 36 }]]);
+
+    const connectors = routeAuthorityConnectors([topNode], laneGutterX, railById);
+    expect(connectors).toHaveLength(1);
+    const box = boundingBoxOf(connectors[0]!.route.points);
+    expect(overlaps(box, bottomRect)).toBe(false);
+  });
+
+  it("is deterministic and sorted by component id then boundary id", () => {
+    const nodeB = { id: "component.b", regionId: "r", rect: { x: 0, y: 0, width: 10, height: 10 }, authorityRefs: ["boundary.y", "boundary.x"], name: "b", responsibility: "r", state: "open" as const, source: {} as never };
+    const nodeA = { id: "component.a", regionId: "r", rect: { x: 0, y: 0, width: 10, height: 10 }, authorityRefs: ["boundary.x"], name: "a", responsibility: "r", state: "open" as const, source: {} as never };
+    const railById = new Map([
+      ["boundary.x", { x: 0, y: 100, width: 10, height: 10 }],
+      ["boundary.y", { x: 0, y: 100, width: 10, height: 10 }],
+    ]);
+    const connectors = routeAuthorityConnectors([nodeB, nodeA], new Map(), railById);
+    expect(connectors.map((c) => c.componentId)).toEqual(["component.a", "component.b", "component.b"]);
+    expect(connectors.map((c) => c.boundaryId)).toEqual(["boundary.x", "boundary.x", "boundary.y"]);
   });
 });

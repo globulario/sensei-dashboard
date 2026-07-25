@@ -1,15 +1,45 @@
-// Relationship routing (claude-stage-4-map-brief.md §3). Only the explicit
-// reference fields Law D permits are resolved here, against exactly the
-// kind each field is documented to name — confirmed against every accepted
-// fixture (docs/fixtures/dashboard-projection/v1/*): `contract.source_ref`/
-// `target_ref` and `flow.steps[*].element_ref` only ever name a Component;
-// `component.authority_refs`, `contract.boundary_refs`, and
-// `boundary.member_refs` only ever name a Boundary... except member_refs,
-// which real-repo's own data shows naming Components (a boundary's members
-// are the components inside it, not other boundaries) — so member_refs
-// resolves against Component, not Boundary. Anything that resolves to the
-// wrong kind, or doesn't resolve at all, becomes a diagnostic and is
-// omitted from geometry — never guessed, never drawn to the wrong target.
+// Relationship routing (claude-stage-4-map-brief.md §3).
+//
+// Reference-kind matrix — what the *pinned schema*
+// (docs/dashboard-projection-v1.schema.json) actually declares, versus what
+// this build renders geometry for. ARCHITECT REVIEW on PR #6 (first pass)
+// correctly flagged that an earlier version of this file narrowed allowed
+// reference kinds from observed fixture behavior rather than from schema/
+// contract authority. The schema declares every one of these fields as a
+// generic `refs`/`stableId` array or scalar with **no kind restriction**:
+//
+//   field                          | schema type   | this build renders for
+//   -------------------------------|----------------|------------------------
+//   contract.source_ref/target_ref | stableId       | Component only
+//   flow.steps[*].element_ref      | stableId       | Component only
+//   contract.boundary_refs         | refs           | Boundary only
+//   component.authority_refs       | refs           | Boundary only
+//   boundary.member_refs           | refs           | Component only
+//   component.region_ref           | stableId       | Region only (see note)
+//
+// A reference that names a real object of a *different* kind than the
+// "renders for" column is **valid producer data**, not a schema violation —
+// this build simply doesn't yet draw geometry for that combination. That is
+// recorded as `unrendered_reference_kind` (a rendering-scope limitation),
+// deliberately distinct from `wrong_kind_reference` (a data problem) and
+// `unresolved_reference` (the id doesn't exist at all). See diagnostics.ts's
+// header for the full three-way distinction.
+//
+// `component.region_ref` is the one exception kept as `wrong_kind_reference`
+// rather than `unrendered_reference_kind`: unlike the other five fields,
+// region_ref's counterpart-pairing with `region.component_refs` is
+// contract-defined by architecture-dashboard-v1.md §6.2/brief §2.2 (the two
+// fields are documented as the same relationship viewed from both ends), so
+// a region_ref naming a Component or Boundary isn't "valid data we don't
+// render" — it contradicts what the contract itself says the field means.
+//
+// ARCHITECT QUESTION (non-blocking — see PR comment): should a future stage
+// render dedicated geometry for a contract/flow endpoint or boundary/
+// authority reference that resolves to a kind outside the table above (e.g.
+// a contract naming a Region), or does `unrendered_reference_kind` remain
+// the intended Stage 4+ behavior for those combinations? This file takes the
+// conservative, non-inventing default (diagnose, draw nothing) either way,
+// so it is not blocked on an answer.
 //
 // The real-repo default fixture is 18 contracts, all self-contracts (16 on
 // one component, 2 on another, two components stacked directly adjacent in
@@ -21,22 +51,38 @@
 // gutter column, so it can never cross a sibling component's interior no
 // matter how many self-contracts pile up on one component.
 //
-// Cross-node routing (only exercised by the synthetic map-rich fixture,
-// since real-repo has none) goes through each component's own lane's right-
-// edge gutter column — a strip of horizontal space that is empty of node
-// content by construction (it's the spacing between lane columns) — down to
-// a shared horizontal gutter row placed below all region content, then
-// across, then back up through the target's lane gutter. This is safe by
-// construction: the only two kinds of segments are (a) a short horizontal
-// hop from a component's own right edge to its own lane's gutter, which
-// only ever passes through that component's own region's reserved margin,
-// and (b) vertical/horizontal travel confined to gutter columns/rows that
-// never contain node rects.
+// Cross-node routing (contracts/flows, and — ARCHITECT REVIEW finding #2 —
+// boundary membership and authority-ref connectors too) goes through each
+// component's own lane's right-edge gutter column — a strip of horizontal
+// space that is empty of node content by construction (it's the spacing
+// between lane columns) — down (or across, for contracts/flows) to a shared
+// row, then back. This is safe by construction, not by tuned pixel values:
+// the only two kinds of segments are (a) a short horizontal hop from a
+// component's own right edge into its own lane's gutter, which only ever
+// crosses that component's own region's reserved margin, and (b) travel
+// confined to gutter columns/rows that never contain node rects. A boundary
+// rail row spans the *full* content width, so a naive straight vertical
+// line from a member/authority-ref component straight down to the rail
+// would cross straight through any sibling component stacked below it in
+// the same region/lane — the gutter-drop gets this right where a direct
+// line would not.
 
 import type { Contract, Flow, Boundary } from "../../contract/generated/dashboard-projection-v1.js";
-import type { ResolvableKind, Rect, RoutePath, RoutePoint, MapContractEdge, MapFlowPath, MapFlowStepPoint, MapFlowSegment, MapBoundary } from "./model.js";
+import type {
+  ResolvableKind,
+  Rect,
+  RoutePath,
+  RoutePoint,
+  MapContractEdge,
+  MapFlowPath,
+  MapFlowStepPoint,
+  MapFlowSegment,
+  MapBoundary,
+  MapComponentNode,
+  MapAuthorityConnector,
+} from "./model.js";
 import type { MapDiagnostic } from "./diagnostics.js";
-import { unresolvedReference, wrongKindReference, duplicateFlowStepOrder } from "./diagnostics.js";
+import { unresolvedReference, unrenderedReferenceKind, duplicateFlowStepOrder } from "./diagnostics.js";
 import { LAYOUT_CONSTANTS, selfLoopDepth } from "./layout.js";
 
 const C = LAYOUT_CONSTANTS;
@@ -60,10 +106,22 @@ function buildOrthogonalRoute(rectA: Rect, gutterXA: number, rectB: Rect, gutter
   };
 }
 
-/** Resolves an id that must name a Component. Returns the component's rect
- * on success; pushes exactly one diagnostic and returns undefined
- * otherwise (unresolved entirely, wrong kind, or a Component id that exists
- * but was never placed because its own region_ref didn't resolve). */
+/** Exit `rect` via its own right edge into `gutterX` (a lane's own gutter
+ * column), then travel straight down within that gutter to `targetY`. Used
+ * for boundary membership and authority-ref connectors — see module header
+ * for why this replaces a naive straight-down line from the component. */
+function buildGutterDropRoute(rect: Rect, gutterX: number, targetY: number): RoutePath {
+  const port = rightCenterPort(rect);
+  return { points: [port, { x: gutterX, y: port.y }, { x: gutterX, y: targetY }] };
+}
+
+/** Resolves an id this build renders geometry for only when it names a
+ * Component. Returns the component's rect on success; pushes exactly one
+ * diagnostic and returns undefined otherwise — `unresolved_reference` when
+ * the id doesn't exist anywhere (including a Component id that exists but
+ * was never placed because its own region_ref didn't resolve),
+ * `unrendered_reference_kind` when it names a real, different-kind object
+ * (see module header matrix). */
 function resolveComponentEndpoint(
   sourceKind: string,
   sourceId: string,
@@ -79,7 +137,7 @@ function resolveComponentEndpoint(
     return undefined;
   }
   if (kind !== "component") {
-    diagnostics.push(wrongKindReference(sourceKind, sourceId, field, refId, "component", kind));
+    diagnostics.push(unrenderedReferenceKind(sourceKind, sourceId, field, refId, ["component"], kind));
     return undefined;
   }
   const rect = componentRectById.get(refId);
@@ -139,7 +197,7 @@ export function routeContracts(
       if (kind === undefined) {
         diagnostics.push(unresolvedReference("contract", c.id, "boundary_refs", refId));
       } else if (kind !== "boundary") {
-        diagnostics.push(wrongKindReference("contract", c.id, "boundary_refs", refId, "boundary", kind));
+        diagnostics.push(unrenderedReferenceKind("contract", c.id, "boundary_refs", refId, ["boundary"], kind));
       } else {
         resolvedBoundaryRefs.push(refId);
       }
@@ -283,6 +341,7 @@ export function routeFlows(
 export function routeBoundaries(
   boundaries: readonly Boundary[],
   componentRectById: ReadonlyMap<string, Rect>,
+  componentLaneGutterX: ReadonlyMap<string, number>,
   idKind: ReadonlyMap<string, ResolvableKind>,
   boundsSoFar: Rect
 ): { boundaries: MapBoundary[]; diagnostics: MapDiagnostic[] } {
@@ -305,7 +364,7 @@ export function routeBoundaries(
         continue;
       }
       if (kind !== "component") {
-        diagnostics.push(wrongKindReference("boundary", b.id, "member_refs", memberId, "component", kind));
+        diagnostics.push(unrenderedReferenceKind("boundary", b.id, "member_refs", memberId, ["component"], kind));
         continue;
       }
       const rect = componentRectById.get(memberId);
@@ -313,7 +372,12 @@ export function routeBoundaries(
         diagnostics.push(unresolvedReference("boundary", b.id, "member_refs", memberId));
         continue;
       }
-      connectors.push({ memberId, point: { x: rect.x + rect.width / 2, y: rect.y + rect.height } });
+      // Gutter-drop, not a straight line from the member's own x — see
+      // module header (ARCHITECT REVIEW finding #2): a rail row spans the
+      // full content width, so a naive vertical line could cross straight
+      // through a sibling component stacked below the member.
+      const gutterX = componentLaneGutterX.get(memberId) ?? rect.x + rect.width;
+      connectors.push({ memberId, route: buildGutterDropRoute(rect, gutterX, railRect.y) });
     }
     return {
       id: b.id,
@@ -328,4 +392,33 @@ export function routeBoundaries(
   });
 
   return { boundaries: result, diagnostics };
+}
+
+/** Routes `component.authority_refs` connectors — a distinct signal from
+ * `boundary.member_refs` membership (brief §3.3) — from each component to
+ * the rail row of each resolved-Boundary-kind authority_ref it names.
+ * Belongs in the pure routing model, not render-svg.ts (ARCHITECT REVIEW
+ * finding #2: connector geometry must not be renderer-owned — see
+ * deliverable 10, "the pure map model/layout owner has no DOM or transport
+ * dependency" applies equally to "no geometry computed outside the model"). */
+export function routeAuthorityConnectors(
+  components: readonly MapComponentNode[],
+  componentLaneGutterX: ReadonlyMap<string, number>,
+  boundaryRailRectById: ReadonlyMap<string, Rect>
+): MapAuthorityConnector[] {
+  const result: MapAuthorityConnector[] = [];
+  for (const component of [...components].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+    for (const boundaryId of [...component.authorityRefs].sort()) {
+      const railRect = boundaryRailRectById.get(boundaryId);
+      if (!railRect) continue; // resolved-but-unrendered boundary already diagnosed upstream (layout.ts)
+      const gutterX = componentLaneGutterX.get(component.id) ?? component.rect.x + component.rect.width;
+      result.push({
+        id: `authority-connector.${component.id}.${boundaryId}`,
+        componentId: component.id,
+        boundaryId,
+        route: buildGutterDropRoute(component.rect, gutterX, railRect.y),
+      });
+    }
+  }
+  return result;
 }

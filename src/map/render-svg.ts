@@ -309,13 +309,19 @@ function buildSvg(model: ArchitectureMapModel, projection: SenseiDashboardProjec
       })
     );
     for (const connector of boundary.connectors) {
+      // Route (a multi-point gutter-drop path), not a straight line — see
+      // routing.ts's buildGutterDropRoute: a rail row spans the full
+      // content width, so a naive vertical line from the member's own x
+      // could cross straight through a sibling component stacked below it
+      // (ARCHITECT REVIEW finding #2 on PR #6). The path is precomputed in
+      // the pure model; this is pure presentation of it.
       boundaryLayer.appendChild(
-        svgEl("line", {
-          x1: String(connector.point.x),
-          y1: String(connector.point.y),
-          x2: String(connector.point.x),
-          y2: String(boundary.railRect.y),
+        svgEl("path", {
+          d: pathD(connector.route),
           class: "map-boundary-connector",
+          fill: "none",
+          "data-stable-id": boundary.id,
+          "data-kind": "boundary-connector",
         })
       );
     }
@@ -323,25 +329,20 @@ function buildSvg(model: ArchitectureMapModel, projection: SenseiDashboardProjec
   // component.authority_refs connectors are a distinct signal from
   // boundary.member_refs membership (brief §3.3) — rendered with their own
   // class so Authority-lens emphasis and Structure-lens de-emphasis can
-  // target them independently of membership connectors above.
-  const boundaryRailById = new Map(model.boundaries.map((b) => [b.id, b.railRect]));
-  for (const component of model.components) {
-    for (const authorityRef of component.authorityRefs) {
-      const railRect = boundaryRailById.get(authorityRef);
-      if (!railRect) continue;
-      const x = component.rect.x + component.rect.width / 2;
-      boundaryLayer.appendChild(
-        svgEl("line", {
-          x1: String(x),
-          y1: String(component.rect.y + component.rect.height),
-          x2: String(x),
-          y2: String(railRect.y),
-          class: "map-authority-ref-connector",
-          "data-stable-id": component.id,
-          "data-kind": "component-authority-ref",
-        })
-      );
-    }
+  // target them independently of membership connectors above. Geometry
+  // (model.authorityConnectors) is computed in routing.ts, not here — this
+  // is presentation-only (ARCHITECT REVIEW finding #2: connector geometry
+  // must live in the pure model, not the renderer).
+  for (const connector of model.authorityConnectors) {
+    boundaryLayer.appendChild(
+      svgEl("path", {
+        d: pathD(connector.route),
+        class: "map-authority-ref-connector",
+        fill: "none",
+        "data-stable-id": connector.componentId,
+        "data-kind": "component-authority-ref",
+      })
+    );
   }
   svg.appendChild(boundaryLayer);
 

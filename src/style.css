@@ -267,6 +267,168 @@ summary:focus-visible,
   overflow: auto;
 }
 
+/* Stage 4 (claude-stage-4-map-brief.md): Architecture Map. Lens changes
+   only toggle opacity/visibility via the .map-lens-structure/.map-lens-
+   authority class on the <svg> root — geometry (x/y/width/height/d/cx/cy)
+   never changes between the two (see src/map/render-svg.ts, Law C). */
+
+.map-lens-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.map-lens-control__label {
+  font-weight: 600;
+}
+
+.map-lens-control__group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.map-lens-control__link {
+  color: var(--fg);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.6rem;
+}
+
+.map-lens-control__link[aria-current="true"] {
+  font-weight: 700;
+  border-color: var(--fg);
+}
+
+.state-block--unsupported-lens,
+.state-block--unknown-lens {
+  border-left-color: var(--partial);
+}
+
+.arch-map-figure {
+  margin: 0;
+  overflow-x: auto;
+}
+
+.arch-map-svg {
+  height: auto;
+  max-width: 100%;
+  color: var(--muted);
+}
+
+.map-region-bg {
+  fill: color-mix(in srgb, var(--border) 30%, transparent);
+  stroke: none;
+}
+
+.map-region-outline {
+  stroke: var(--border);
+  stroke-width: 1.5;
+  rx: 4;
+}
+
+.map-node--region {
+  cursor: pointer;
+}
+
+.map-node-box {
+  fill: var(--bg);
+  stroke: var(--fg);
+  stroke-width: 1.5;
+  rx: 3;
+}
+
+.map-node--component {
+  cursor: pointer;
+}
+
+.map-label {
+  fill: var(--fg);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.map-label--region {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.map-edge {
+  stroke: var(--fg);
+  stroke-width: 1.5;
+}
+
+.map-edge--flow {
+  stroke: var(--muted);
+}
+
+.map-flow-step {
+  fill: var(--muted);
+}
+
+.map-boundary-rail {
+  fill: color-mix(in srgb, var(--partial) 15%, transparent);
+  stroke: var(--partial);
+  stroke-width: 1;
+}
+
+.map-boundary-connector {
+  stroke: var(--partial);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.map-authority-ref-connector {
+  stroke: var(--partial);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+
+/* Structure lens: authority-only signal stays visible but visually
+   secondary (brief §5.2: "Boundaries remain available but visually
+   secondary"). Authority lens: contracts/flows step back so authority
+   structure reads first (brief §5.3). Coordinates are identical either
+   way — only these opacity rules differ. */
+.map-lens-structure .layer-boundary-rails {
+  opacity: 0.4;
+}
+.map-lens-authority .map-edge--contract,
+.map-lens-authority .map-edge--flow,
+.map-lens-authority .map-flow-step {
+  opacity: 0.35;
+}
+.map-lens-structure .map-authority-ref-connector {
+  opacity: 0.25;
+}
+.map-lens-authority .layer-boundary-rails,
+.map-lens-authority .map-authority-ref-connector {
+  opacity: 1;
+}
+
+.map-relationships,
+.map-diagnostics {
+  margin: 1.5rem 0;
+}
+
+.map-relationships__empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.map-diagnostics__note {
+  color: var(--muted);
+}
+
+.map-diagnostics__list {
+  padding-left: 1.25rem;
+}
+
+.map-diagnostics__item {
+  color: var(--partial);
+  margin-bottom: 0.4rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

@@ -1,0 +1,84 @@
+{
+  "schema_version": "sensei.dashboard.projection.v1",
+  "identity": {
+    "projection_id": "projection.synthetic-map-rich-fixture",
+    "repository": { "key": "example/synthetic-map-rich", "display_name": "SYNTHETIC MAP-RICH TEST FIXTURE — not a real repository" },
+    "revision": { "id": "0000000000000000000000000000000000mapr" },
+    "graph_authority": { "observed": "yes", "current": "yes", "identity": null, "summary": "synthetic fixture, not real evidence" },
+    "generated_at": "2026-07-24T00:00:00Z"
+  },
+  "availability": {
+    "state": "available",
+    "summary": "SYNTHETIC: hand-authored fixture used only to prove Stage 4 Architecture Map paths (multiple regions/lanes, both boundary kinds, parallel/bidirectional/self contracts, a multi-step flow, and mixed contested/unknown/open states) that no accepted Sensei fixture currently exercises together. Not real Sensei output — do not treat any state, contract, or flow here as evidence about a real repository.",
+    "limitations": [],
+    "sources": [{ "owner": "synthetic", "availability": "available", "summary": "hand-authored test fixture" }]
+  },
+  "assessments": {
+    "architecture_health": { "state": "healthy", "label": "Architecture health", "summary": "synthetic", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "projection_integrity": { "state": "healthy", "label": "Projection integrity", "summary": "synthetic", "severity": "not_applicable", "provenance": { "evidence_refs": [] } },
+    "observation_completeness": {
+      "state": "healthy", "label": "Observation completeness", "summary": "synthetic", "severity": "not_applicable",
+      "coverage": { "observed": 14, "total": 14, "unit": "synthetic elements" }, "provenance": { "evidence_refs": [] }
+    }
+  },
+  "active_context": null,
+  "briefing": [
+    { "id": "briefing.synthetic", "kind": "orientation", "text": "This is a synthetic, hand-authored test fixture used only to demonstrate map-rich rendering paths. It is not real Sensei output.", "severity": "info", "element_refs": [], "provenance": { "evidence_refs": [] } }
+  ],
+  "regions": [
+    { "id": "region.frontend", "name": "Frontend", "responsibility": "Synthetic: demonstrates a region in its own lane.", "state": "healthy", "component_refs": ["component.web_ui"], "visual_anchor": { "order": 0, "lane": "presentation" }, "provenance": { "evidence_refs": [] } },
+    { "id": "region.backend", "name": "Backend", "responsibility": "Synthetic: demonstrates two regions sharing one lane.", "state": "attention", "component_refs": ["component.api_gateway", "component.auth_service"], "visual_anchor": { "order": 0, "lane": "core" }, "provenance": { "evidence_refs": [] } },
+    { "id": "region.storage", "name": "Storage", "responsibility": "Synthetic: demonstrates region stacking within a lane.", "state": "unknown", "component_refs": ["component.database"], "visual_anchor": { "order": 1, "lane": "core" }, "provenance": { "evidence_refs": [] } }
+  ],
+  "components": [
+    { "id": "component.web_ui", "name": "Web UI", "region_ref": "region.frontend", "responsibility": "Synthetic: source of a cross-region parallel contract pair.", "state": "healthy", "authority_refs": [], "visual_anchor": { "order": 0 }, "provenance": { "evidence_refs": [] } },
+    { "id": "component.api_gateway", "name": "API Gateway", "region_ref": "region.backend", "responsibility": "Synthetic: target of the parallel pair, source of a bidirectional contract, and owner of a self-contract.", "state": "attention", "authority_refs": ["boundary.trust_edge"], "visual_anchor": { "order": 0 }, "provenance": { "evidence_refs": [] } },
+    { "id": "component.auth_service", "name": "Auth Service", "region_ref": "region.backend", "responsibility": "Synthetic: other end of the bidirectional contract.", "state": "contested", "authority_refs": [], "visual_anchor": { "order": 1 }, "provenance": { "evidence_refs": [] } },
+    { "id": "component.database", "name": "Database", "region_ref": "region.storage", "responsibility": "Synthetic: final step of the multi-step flow, member of the domain boundary.", "state": "unknown", "authority_refs": [], "visual_anchor": { "order": 0 }, "provenance": { "evidence_refs": [] } }
+  ],
+  "boundaries": [
+    { "id": "boundary.trust_edge", "name": "Trust edge", "kind": "trust", "member_refs": ["component.web_ui", "component.api_gateway"], "state": "healthy", "summary": "Synthetic: first of the two required boundary kinds.", "provenance": { "evidence_refs": [] } },
+    { "id": "boundary.data_domain", "name": "Data domain", "kind": "domain", "member_refs": ["component.database"], "state": "open", "summary": "Synthetic: second of the two required boundary kinds.", "provenance": { "evidence_refs": [] } }
+  ],
+  "contracts": [
+    { "id": "contract.ui_to_gateway", "name": "UI calls Gateway", "source_ref": "component.web_ui", "target_ref": "component.api_gateway", "kind": "http", "direction": "source_to_target", "state": "open", "summary": "Synthetic: one half of a cross-region, cross-lane parallel contract pair.", "boundary_refs": ["boundary.trust_edge"], "provenance": { "evidence_refs": [] } },
+    { "id": "contract.gateway_to_ui", "name": "Gateway pushes to UI", "source_ref": "component.api_gateway", "target_ref": "component.web_ui", "kind": "event", "direction": "source_to_target", "state": "open", "summary": "Synthetic: other half of the parallel pair — same two nodes, opposite direction.", "provenance": { "evidence_refs": [] } },
+    { "id": "contract.gateway_auth", "name": "Gateway/Auth session exchange", "source_ref": "component.api_gateway", "target_ref": "component.auth_service", "kind": "grpc", "direction": "bidirectional", "state": "contested", "summary": "Synthetic: the required bidirectional contract.", "provenance": { "evidence_refs": [] } },
+    { "id": "contract.gateway_self_check", "name": "Gateway self health check", "source_ref": "component.api_gateway", "target_ref": "component.api_gateway", "kind": "internal", "direction": "undirected", "state": "healthy", "summary": "Synthetic: the required self-contract.", "provenance": { "evidence_refs": [] } }
+  ],
+  "flows": [
+    {
+      "id": "flow.request_lifecycle",
+      "name": "Request lifecycle",
+      "kind": "command",
+      "state": "unknown",
+      "steps": [
+        { "order": 1, "element_ref": "component.web_ui", "summary": "Synthetic: flow step 1, no contract_ref." },
+        { "order": 2, "element_ref": "component.api_gateway", "contract_ref": "contract.ui_to_gateway", "summary": "Synthetic: flow step 2, with contract_ref." },
+        { "order": 3, "element_ref": "component.auth_service", "contract_ref": "contract.gateway_auth", "summary": "Synthetic: flow step 3, with contract_ref." },
+        { "order": 4, "element_ref": "component.database", "summary": "Synthetic: flow step 4, no contract_ref — the required multi-step (4-step) flow." }
+      ],
+      "summary": "Synthetic: the required multi-step flow, at least one step carrying an explicit contract_ref.",
+      "provenance": { "evidence_refs": [] }
+    }
+  ],
+  "attention": [],
+  "evolution": { "availability": "available", "base_revision": null, "head_revision": "0000000000000000000000000000000000mapr", "changes": [] },
+  "focus_records": [
+    { "element_ref": "region.frontend", "element_kind": "region", "name": "Frontend", "responsibility": "Synthetic: demonstrates a region in its own lane.", "state": "healthy", "owner_refs": [], "owned_refs": ["component.web_ui"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "region.backend", "element_kind": "region", "name": "Backend", "responsibility": "Synthetic: demonstrates two regions sharing one lane.", "state": "attention", "owner_refs": [], "owned_refs": ["component.api_gateway", "component.auth_service"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "region.storage", "element_kind": "region", "name": "Storage", "responsibility": "Synthetic: demonstrates region stacking within a lane.", "state": "unknown", "owner_refs": [], "owned_refs": ["component.database"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "component.web_ui", "element_kind": "component", "name": "Web UI", "responsibility": "Synthetic: source of a cross-region parallel contract pair.", "state": "healthy", "owner_refs": ["region.frontend"], "contract_refs": ["contract.ui_to_gateway", "contract.gateway_to_ui"], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "component.api_gateway", "element_kind": "component", "name": "API Gateway", "responsibility": "Synthetic: target of the parallel pair, source of a bidirectional contract, and owner of a self-contract.", "state": "attention", "owner_refs": ["region.backend", "boundary.trust_edge"], "contract_refs": ["contract.ui_to_gateway", "contract.gateway_to_ui", "contract.gateway_auth", "contract.gateway_self_check"], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "component.auth_service", "element_kind": "component", "name": "Auth Service", "responsibility": "Synthetic: other end of the bidirectional contract.", "state": "contested", "owner_refs": ["region.backend"], "contract_refs": ["contract.gateway_auth"], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "component.database", "element_kind": "component", "name": "Database", "responsibility": "Synthetic: final step of the multi-step flow, member of the domain boundary.", "state": "unknown", "owner_refs": ["region.storage", "boundary.data_domain"], "contract_refs": [], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "boundary.trust_edge", "element_kind": "boundary", "name": "Trust edge", "responsibility": "Synthetic: first of the two required boundary kinds.", "state": "healthy", "owner_refs": [], "owned_refs": ["component.web_ui", "component.api_gateway"], "contract_refs": ["contract.ui_to_gateway"], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "boundary.data_domain", "element_kind": "boundary", "name": "Data domain", "responsibility": "Synthetic: second of the two required boundary kinds.", "state": "open", "owner_refs": [], "owned_refs": ["component.database"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "contract.ui_to_gateway", "element_kind": "contract", "name": "UI calls Gateway", "responsibility": "Synthetic: one half of a cross-region, cross-lane parallel contract pair.", "state": "open", "owner_refs": ["component.web_ui"], "contract_refs": [], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "contract.gateway_to_ui", "element_kind": "contract", "name": "Gateway pushes to UI", "responsibility": "Synthetic: other half of the parallel pair — same two nodes, opposite direction.", "state": "open", "owner_refs": ["component.api_gateway"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "contract.gateway_auth", "element_kind": "contract", "name": "Gateway/Auth session exchange", "responsibility": "Synthetic: the required bidirectional contract.", "state": "contested", "owner_refs": ["component.api_gateway"], "contract_refs": [], "flow_refs": ["flow.request_lifecycle"], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "contract.gateway_self_check", "element_kind": "contract", "name": "Gateway self health check", "responsibility": "Synthetic: the required self-contract.", "state": "healthy", "owner_refs": ["component.api_gateway"], "contract_refs": [], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } },
+    { "element_ref": "flow.request_lifecycle", "element_kind": "flow", "name": "Request lifecycle", "responsibility": "Synthetic: the required multi-step flow, at least one step carrying an explicit contract_ref.", "state": "unknown", "owner_refs": [], "contract_refs": ["contract.ui_to_gateway", "contract.gateway_auth"], "flow_refs": [], "attention_refs": [], "decision_refs": [], "provenance": { "evidence_refs": [] } }
+  ],
+  "capabilities": { "live_refresh": false, "revision_compare": false, "agent_handoff": "none", "source_deep_links": false }
+}

@@ -52,3 +52,15 @@ files:
   # verbatim from the validated projection or explicit user choice, never
   # computed or inferred (dashboard-architecture-v1.md §6.5, §3.3).
   - src/handoff/build-envelope.ts
+
+  # Architecture Map's pure model/layout/routing (Stage 4). The shared
+  # reference-kind lookup and connector-geometry ownership here were each
+  # wrong in a way that passed local review three separate times before
+  # ARCHITECT REVIEW caught them on PR #6 — see the durable failure modes
+  # for the exact shapes (reference kind narrowed from observed fixture
+  # data instead of schema authority; connector geometry computed in the
+  # renderer instead of the pure model; the shared kind index not covering
+  # every real object kind a reference field could name).
+  - src/map/model.ts
+  - src/map/layout.ts
+  - src/map/routing.ts

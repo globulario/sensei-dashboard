@@ -56,6 +56,12 @@ Static GitHub Pages mode remains read-only and free of local-runner dependencies
 
 The immutable projection contract must not acquire mutable conversation, authentication, process, or execution state.
 
+### 2.1 Relationship to existing manual Sensei sessions
+
+Before `sensei-runner` exists, architecture-sensitive work already happens through manually configured local sessions: an editor or CLI agent (for example Claude Code) connected to a bare `awareness-mcp` bridge via a project-local `.mcp.json`, following the informal discipline in `CLAUDE.md`/`AGENTS.md` (briefing before high-risk edits, `sensei propose` for durable feedback, no enforced admission gate). PR #6 of this repository was implemented and PR #8 itself was reviewed through exactly that path.
+
+This extension does not retroactively invalidate that mode, and Phase O1 does not remove it. Manual sessions remain a supported, lower-assurance path: useful for exploration, review, and low-risk changes, but without the workspace-identity proof, admission gate, or exact-SHA worktree isolation this contract requires for a **governed** run. A future phase may tighten this — for example by teaching `sensei-runner` to also supervise manually launched sessions, or by deprecating the bare bridge for architecture-sensitive mutation once the runner is proven — but that transition is itself a future architectural decision, not an implicit consequence of this document. Until an explicit decision says otherwise, "governed" (admission-gated, receipt-producing) and "manual" (CLI/editor-direct) remain two distinct, coexisting ways to work in a Sensei-initialized repository, and the Dashboard/runner UI must never present a manual session's output as if it had passed admission.
+
 ## 3. Product thesis
 
 Traditional AI coding tools center the code-editing session. Sensei Dashboard should center the architectural conversation.
@@ -293,6 +299,8 @@ Any mismatch produces a typed refusal such as `AGENT_START_REFUSED`.
 
 The architect skill and worker instruction also perform a first-action self-check through MCP. The runner gate prevents launch; the agent gate prevents an already-running session from proceeding under mismatched context.
 
+`graph_state`, `protection_state`, and `generation_identity` above are illustrative, not a claim that Sensei core's MCP surface already exposes them under these exact names. The MCP tools available today (`awareness_metadata`, `awareness_preflight`, `awareness_briefing`) return related but differently named fields — `graph_freshness_state`, `certified_awareness_graph_commit`, `live_store_graph_triple_count`, `seed_state`, `coverage_state`. Phase O1 must reconcile this receipt's exact field set with Sensei core's real, current MCP contract — either by mapping each field to an existing one 1:1, or by getting each new field explicitly adopted on the Sensei side — before Phase O2 builds a runner against it. Inventing a parallel vocabulary that merely resembles the real one is worse than an obvious gap: a runner built against imagined field names would pass its own tests while failing silently against the real server.
+
 ## 8. Repository initialization
 
 When a selected repository is not Sensei-initialized, the local Dashboard offers two explicit paths.
@@ -425,6 +433,16 @@ New versioned contracts are required for:
 
 The projection document remains immutable architectural state. Conversation, provider, and execution state remain mutable and independently versioned.
 
+### 11.1 Ownership per contract
+
+`dashboard-projection-v1` and `agent-handoff-v1` follow one existing rule (`architecture-dashboard-v1.md` §10): `globulario/sensei` is the producer authority once it adopts a contract, and this repository keeps a generated/pinned consumer mirror verified byte-for-byte by `npm run verify:pin`. The new contracts split across that same line rather than forming one new undifferentiated group:
+
+- **Sensei-core-owned, pinned like the existing two:** `sensei.dashboard.workspace-admission.v1` and the workspace-identity receipt shape in §7. Admission, preflight, and workspace identity are Sensei-core authority per §4.1 — the Dashboard/runner must not define what a valid admission response looks like on its own behalf, the same way it must not define what a valid projection looks like.
+- **Dashboard/runner-owned, locally authoritative:** `sensei.dashboard.architect-session.v1`, `sensei.dashboard.agent-run.v1`, `sensei.dashboard.execution-receipt.v1`, provider status/capabilities, and normalized provider events. These describe conversation, orchestration, and execution state that Sensei core has no opinion about and never validates.
+- **Governed GitHub action requests/results** are runner-owned but must be validated against the target repository's actual GitHub state at write time (§10) — they are not free-standing local state the way a provider-event log is.
+
+Phase O1 must record this split explicitly when each schema is drafted, not leave it implicit. A schema in the first group ships only after the corresponding Sensei-core surface exists and is pinned; a schema in the second group may ship as soon as this repository defines it, the same way `agent-handoff-v1` did.
+
 ## 12. Worktree and execution isolation
 
 Every mutation-capable run receives a separate exact-SHA worktree.
@@ -531,10 +549,13 @@ A configured but unreachable MCP service is displayed as `CONFIGURED, NOT VERIFI
 - no arbitrary shell construction from untrusted UI text
 - explicit cleanup and cancellation
 - sandboxing before unattended untrusted execution
+- an admitted job's own edits to `docs/awareness/**` or `.sensei/config.yaml` must not take effect for that same job's remaining admission checks — a job cannot loosen the governance it is currently running under by editing the files that define it. The runner snapshots the governing awareness/config state at admission time and re-checks against that snapshot, not against whatever the worktree currently contains, for every gate after the first.
 
 ## 16. Delivery plan
 
-This extension proceeds beside the existing observatory roadmap and must not interrupt the active deterministic Architecture Map implementation.
+This extension proceeds beside the existing observatory roadmap. The deterministic Architecture Map (Stage 4) merged in PR #6 while this contract was under review; this extension must not interrupt whichever observatory stage is active when a given orchestration phase starts, and must not modify projection semantics or map geometry to make room for itself.
+
+Each phase below lands through its own bounded implementer brief, following this repository's existing stage-brief discipline (see `docs/claude-stage-4-map-brief.md` for the established shape: read-first list, explicit deliverables, non-goals, stop conditions requiring an `ARCHITECT QUESTION` instead of an invented answer, required verification commands, and an exact-SHA handoff protocol). This contract defines what each phase must achieve; it does not itself grant implementation authority for any phase; a phase begins only once its own brief exists and is handed off the same way `claude-stage-4-map-brief.md` was.
 
 ### Phase O1: governing contracts
 
@@ -613,11 +634,13 @@ The vertical slice succeeds only when the full durable workflow can be reconstru
 
 ## 18. Acceptance criteria
 
+These describe the extension's full target shape across every phase in §16, not a Phase O1–O5 completion bar. The first vertical slice (§17) satisfies a narrower subset — it proves the loop with exactly one worker provider, not all three; the "select Claude, Codex, or Antigravity" bullet below becomes true incrementally as Phase O5 adds each remaining adapter, not on the first slice's own completion.
+
 - Existing projection views and static GitHub Pages mode remain functional without the runner.
 - A user can sign into the OpenAI architect using a regular ChatGPT account through the local Dashboard flow.
 - A persistent architect thread can inspect the selected repository through the correct Sensei MCP session.
 - The architect can prepare a governed GitHub contract and draft PR.
-- The user can select Claude, Codex, or Antigravity for a bounded run.
+- The user can select Claude, Codex, or Antigravity for a bounded run, as each provider's own phase in §16 completes.
 - No provider starts before Sensei initialization, MCP identity verification, and required admission succeed.
 - Every run is bound to repository, canonical domain, worktree, base SHA, head SHA, task, role, provider, and Sensei generation.
 - GitHub retains durable contract, review, CI, and merge history.

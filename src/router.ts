@@ -47,6 +47,27 @@ export function elementHref(elementId: string): string {
   return `/element/${encodeURIComponent(elementId)}${window.location.search}`;
 }
 
+/**
+ * Builds the current path with one query parameter added, replaced, or
+ * removed — the same "preserve everything else" contract as `navigate`'s
+ * default query-carrying behavior, but for callers that need to change one
+ * param deliberately (e.g. the Architecture Map's lens control) rather than
+ * just follow a link. Passing `value === defaultValue` removes the param
+ * instead of writing it, so the URL doesn't accumulate a redundant
+ * `?lens=structure` when structure is already the default — reload, copied
+ * links, and back/forward all still resolve to the same lens either way.
+ */
+export function withQueryParam(param: string, value: string | null, defaultValue?: string): string {
+  const params = new URLSearchParams(window.location.search);
+  if (value === null || value === defaultValue) {
+    params.delete(param);
+  } else {
+    params.set(param, value);
+  }
+  const qs = params.toString();
+  return window.location.pathname + (qs ? `?${qs}` : "?");
+}
+
 export const ROUTE_PATHS = {
   overview: "/overview",
   map: "/map",

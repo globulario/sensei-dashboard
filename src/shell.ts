@@ -143,7 +143,7 @@ export class Shell {
         this.#focusMain();
         return;
       case "map":
-        renderMap(this.#mainEl, projection);
+        renderMap(this.#mainEl, projection, route.query, (path) => this.#router.navigate(path));
         this.#focusMain();
         return;
       case "evolution":

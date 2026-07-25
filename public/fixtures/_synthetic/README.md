@@ -14,6 +14,15 @@ used only to exercise UI states no accepted fixture currently demonstrates:
 - `invalid-schema.json` — deliberately fails schema validation (an invalid
   `graph_authority.current` enum value, and missing required top-level
   fields) to exercise the adapter's "invalid" outcome.
+- `map-rich.json` — every accepted fixture from Sensei's producer is too
+  sparse to prove every Stage 4 Architecture Map path (`real-repo` alone has
+  one synthetic placeholder region and zero flows). This fixture hand-
+  authors 3 regions across 2 lanes, both boundary kinds, a cross-region
+  parallel contract pair, a bidirectional contract, a self-contract, and a
+  4-step flow with an explicit `contract_ref`, plus a mix of
+  contested/unknown/open states — reachable only via
+  `?fixture=_synthetic-map-rich`, never the default (see
+  `static-fixture-adapter.test.ts`).
 
 Per `docs/claude-stage-1-brief.md`: "A deliberately labeled synthetic test
 fixture is acceptable for isolated component tests, but the development

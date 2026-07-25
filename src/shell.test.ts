@@ -145,6 +145,44 @@ describe("Shell honest-state rendering", () => {
     expect(root.querySelector(".state-block--disconnected")).not.toBeNull();
   });
 
+  it("passes the map route's ?lens= query through to the Architecture Map view (Stage 4)", async () => {
+    const prov = { evidence_refs: [] };
+    const projection = minimalProjection({
+      regions: [
+        {
+          id: "region.a",
+          name: "Region A",
+          responsibility: "r",
+          state: "open",
+          component_refs: ["component.a"],
+          visual_anchor: { order: 0 },
+          provenance: prov,
+        },
+      ],
+      components: [
+        {
+          id: "component.a",
+          name: "Component A",
+          region_ref: "region.a",
+          responsibility: "r",
+          state: "open",
+          authority_refs: [],
+          visual_anchor: { order: 0 },
+          provenance: prov,
+        },
+      ],
+    });
+    const adapter = new FakeAdapter({ status: "available", projection });
+    const root = mount();
+    const shell = new Shell(root, adapter, new Router());
+
+    await shell.render({ name: "map", query: new URLSearchParams("lens=authority") });
+
+    const svg = root.querySelector("svg.arch-map-svg");
+    expect(svg?.getAttribute("class")).toContain("map-lens-authority");
+    expect(root.querySelector('.map-lens-control__link[aria-current="true"]')?.textContent).toBe("Authority");
+  });
+
   it("does not re-fetch when navigating between routes (adapter is asked once per render call, shell doesn't duplicate loads within a render)", async () => {
     const projection = minimalProjection();
     const adapter = new FakeAdapter({ status: "available", projection });

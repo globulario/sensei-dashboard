@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { parseRoute, elementHref, Router } from "./router.js";
+import { parseRoute, elementHref, withQueryParam, Router } from "./router.js";
 
 describe("parseRoute", () => {
   it("maps / and /overview to the overview route", () => {
@@ -108,6 +108,41 @@ describe("Router — query-state preservation across internal navigation (advers
     window.history.pushState({}, "", "/");
     const router = new Router();
     router.navigate("/map");
+    expect(window.location.search).toBe("");
+  });
+});
+
+describe("withQueryParam", () => {
+  beforeEach(() => {
+    window.history.pushState({}, "", "/");
+  });
+
+  it("adds a param that wasn't present", () => {
+    window.history.pushState({}, "", "/map?fixture=contested");
+    expect(withQueryParam("lens", "authority")).toBe("/map?fixture=contested&lens=authority");
+  });
+
+  it("replaces an existing param without disturbing others", () => {
+    window.history.pushState({}, "", "/map?fixture=contested&lens=authority");
+    expect(withQueryParam("lens", "structure")).toBe("/map?fixture=contested&lens=structure");
+  });
+
+  it("removes the param when set to the declared default, so the URL doesn't accumulate a redundant value", () => {
+    window.history.pushState({}, "", "/map?fixture=contested&lens=authority");
+    expect(withQueryParam("lens", "structure", "structure")).toBe("/map?fixture=contested");
+  });
+
+  it("removes the param when value is explicitly null", () => {
+    window.history.pushState({}, "", "/map?fixture=contested&lens=authority");
+    expect(withQueryParam("lens", null)).toBe("/map?fixture=contested");
+  });
+
+  it("produces a bare '?' (not an empty string) when the result has no params left, opting out of navigate()'s query-carry-forward", () => {
+    window.history.pushState({}, "", "/map?lens=authority");
+    const target = withQueryParam("lens", null);
+    expect(target).toBe("/map?");
+    const router = new Router();
+    router.navigate(target);
     expect(window.location.search).toBe("");
   });
 });

@@ -1,14 +1,19 @@
-// Architecture Map (architecture-dashboard-v1.md §6.2). Explicitly out of
-// scope for Stage 1: "no map layout engine yet" — no positions, no SVG/
-// canvas, no graph library. This view proves the route and data reach a
-// real projection and nothing more; it deliberately shows only region
-// names as a flat list, not a structural tree, so it cannot be mistaken
-// for an attempt at the deterministic map.
+// Architecture Map (architecture-dashboard-v1.md §6.2, claude-stage-4-map-
+// brief.md). Thin composition root only: partial banner, the honest empty-
+// projection state (brief §8.1), or else build the pure map model once and
+// hand it to the SVG renderer. All layout/routing logic lives in src/map/.
 
 import type { SenseiDashboardProjectionV1 } from "../../contract/generated/dashboard-projection-v1.js";
 import { renderPartialBannerIfAny } from "../state/render-states.js";
+import { buildArchitectureMapModel } from "../map/model.js";
+import { renderArchitectureMap } from "../map/render-svg.js";
 
-export function renderMap(container: HTMLElement, projection: SenseiDashboardProjectionV1): void {
+export function renderMap(
+  container: HTMLElement,
+  projection: SenseiDashboardProjectionV1,
+  query: URLSearchParams,
+  navigate: (path: string) => void
+): void {
   container.replaceChildren();
 
   const heading = document.createElement("h1");
@@ -17,18 +22,15 @@ export function renderMap(container: HTMLElement, projection: SenseiDashboardPro
 
   renderPartialBannerIfAny(container, projection);
 
-  const placeholder = document.createElement("p");
-  placeholder.className = "stage-placeholder";
-  placeholder.textContent =
-    "The architecture map (deterministic layout, boundaries, contracts, flows) is not implemented in Stage 1.";
-  container.appendChild(placeholder);
+  if (projection.regions.length === 0 && projection.components.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "state-block state-block--empty";
+    empty.setAttribute("role", "status");
+    empty.textContent = "No architectural elements were supplied for this projection.";
+    container.appendChild(empty);
+    return;
+  }
 
-  const regionNames = projection.regions.map((r) => r.name);
-  const note = document.createElement("p");
-  note.className = "map-region-names";
-  note.textContent =
-    regionNames.length > 0
-      ? `Regions in this projection: ${regionNames.join(", ")}.`
-      : "No regions in this projection.";
-  container.appendChild(note);
+  const model = buildArchitectureMapModel(projection);
+  renderArchitectureMap(container, projection, model, { query, navigate });
 }

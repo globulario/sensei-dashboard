@@ -110,6 +110,30 @@ describe("StaticFixtureAdapter", () => {
     }
   });
 
+  // --- Stage 4 synthetic map-rich fixture (claude-stage-4-map-brief.md §9) ---
+
+  it("loads the synthetic map-rich fixture only via its explicit fixture name, as a valid available outcome", async () => {
+    const adapter = new StaticFixtureAdapter("_synthetic-map-rich");
+    const outcome = await adapter.loadProjection();
+    expect(outcome.status).toBe("available");
+    if (outcome.status !== "available") return;
+    expect(outcome.projection.regions.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(outcome.projection.boundaries.map((b) => b.kind)).size).toBeGreaterThanOrEqual(2);
+    expect(outcome.projection.contracts.some((c) => c.direction === "bidirectional")).toBe(true);
+    expect(outcome.projection.contracts.some((c) => c.source_ref === c.target_ref)).toBe(true);
+    expect(outcome.projection.flows.some((f) => f.steps.length >= 3)).toBe(true);
+    expect(outcome.projection.active_context).toBeNull();
+  });
+
+  it("the default adapter (no fixture name given) never resolves to the synthetic map-rich fixture", async () => {
+    const adapter = new StaticFixtureAdapter();
+    const outcome = await adapter.loadProjection();
+    expect(outcome.status).toBe("available");
+    if (outcome.status !== "available") return;
+    // The default (real-repo) fixture's own identity, not the synthetic one's.
+    expect(outcome.projection.identity.repository.display_name).not.toContain("SYNTHETIC");
+  });
+
   it("never reaches the semantic Focus-integrity check for a document that is already schema-invalid — schema errors are reported, not integrity errors", async () => {
     const adapter = new StaticFixtureAdapter("_synthetic-invalid-schema");
     const outcome = await adapter.loadProjection();

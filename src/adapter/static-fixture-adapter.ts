@@ -26,6 +26,12 @@ const FIXTURE_URLS: Record<string, string> = {
   "public-redacted": "/fixtures/dashboard-projection/v1/public-redacted/projection.json",
   "_synthetic-available": "/fixtures/_synthetic/available.json",
   "_synthetic-invalid-schema": "/fixtures/_synthetic/invalid-schema.json",
+  // Stage 4 (claude-stage-4-map-brief.md §9): the accepted producer
+  // fixtures don't carry enough regions/boundaries/contracts/flows to prove
+  // every map path (real-repo alone has 1 region and 0 flows) — this
+  // synthetic fixture exists solely to exercise those paths in isolation,
+  // never as the default.
+  "_synthetic-map-rich": "/fixtures/_synthetic/map-rich.json",
   // Accepted schema-valid/producer-invalid fixtures (claude-stage-3-brief.md
   // §2.2): real fixtures Sensei's own contract pin accepts, reachable here
   // so the Focus-integrity rejection path is exercisable end to end, not

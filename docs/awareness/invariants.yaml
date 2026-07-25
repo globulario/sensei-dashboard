@@ -84,3 +84,51 @@ invariants:
       - 'ARCHITECT REVIEW: CHANGES REQUIRED on globulario/sensei-dashboard#5 (finding #2): externalSourceLink() wrote source_links[*].target and active_context.url directly into href with only noopener/noreferrer/nofollow -- no scheme check.'
       - 'Fixed by centralizing scheme resolution in dom.ts''s externalSourceLink(): new URL(target, window.location.href), accept only protocol in {http:, https:}; otherwise render plain text plus a role=note diagnostic naming the original target verbatim.'
     contract: any UI element that turns owner-supplied projection text (source_links[*].target, active_context.url, and any future such field) into a clickable href must first resolve it and check its scheme against an explicit allow-list (http/https), rendering non-clickable text with a visible diagnostic instead of an anchor for anything else -- never rewriting the target into a different URL
+  - id: invariant.dashboard.map_reference_kind_scope_follows_schema_not_fixtures
+    title: Architecture Map reference-kind diagnostics must follow the pinned schema's declared type, never observed fixture shape
+    severity: high
+    status: active
+    description: A reference resolving to a real object of a kind this build does not draw geometry for in that position is unrendered_reference_kind (valid producer data, a rendering-scope limitation) -- never wrong_kind_reference (a genuine contract violation) and never unresolved_reference (the id does not exist at all). Only component.region_ref stays wrong_kind_reference, because region.component_refs/component.region_ref are documented as the same relationship from both ends -- a genuine contract-defined pairing, not an inferred one.
+    protects:
+      files:
+        - src/map/routing.ts
+        - src/map/layout.ts
+        - src/map/model.ts
+    required_tests:
+      - src/map/routing.test.ts
+      - src/map/layout.test.ts
+    evidence:
+      - 'ARCHITECT REVIEW (first pass) on PR #6: ''Reference kinds are being narrowed from fixture behavior rather than contract authority.'''
+      - 'Confirmed by reading docs/dashboard-projection-v1.schema.json directly: every one of these fields is a bare stableId/refs, no enum/kind restriction anywhere.'
+    contract: docs/dashboard-projection-v1.schema.json declares contract.source_ref/target_ref/boundary_refs, flow.steps[*].element_ref/contract_ref, component.authority_refs, and boundary.member_refs as generic stableId/refs with no kind restriction -- a reference field's permitted kind(s) must be read from the schema's actual type declaration, never inferred from what the currently-accepted fixtures happen to contain.
+  - id: invariant.dashboard.map_connector_geometry_owned_by_routing_model
+    title: Architecture Map connector geometry (boundary membership, authority refs) must be computed in the pure routing model, never in the SVG renderer
+    severity: high
+    status: active
+    description: A boundary rail row spans the full content width of the map, so any connector from a component down to that rail must route through the component's own lane gutter column (buildGutterDropRoute), never a straight line from the component's own x -- a straight line can cross directly through a sibling component stacked below it in the same region/lane. Both boundary.member_refs connectors and component.authority_refs connectors (routeAuthorityConnectors) must be routed this way, and the resulting route belongs on the model (MapBoundaryConnector.route, ArchitectureMapModel.authorityConnectors), not computed ad hoc where it is drawn.
+    protects:
+      files:
+        - src/map/routing.ts
+        - src/map/render-svg.ts
+    required_tests:
+      - src/map/routing.test.ts
+    evidence:
+      - 'ARCHITECT REVIEW (first pass) on PR #6: ''Boundary and authority connector geometry is incomplete and partly renderer-owned. Straight vertical connectors can cross sibling component boxes, and Authority connector coordinates are calculated inside the SVG renderer instead of the pure routing model.'''
+    contract: 'Deliverable 10 of docs/claude-stage-4-map-brief.md: the pure map model/layout owner has no DOM or transport dependency. This extends to geometry itself -- no coordinate math for any rendered shape may live in src/map/render-svg.ts (or any DOM-touching module); render-svg.ts only draws paths/rects the pure model already computed.'
+  - id: invariant.dashboard.map_shared_kind_index_covers_every_referenceable_object_kind
+    title: Architecture Map's shared id-to-kind lookup must index every real projection object kind a reference field could name, not just the kinds that currently have placeable geometry
+    severity: high
+    status: active
+    description: buildIdKindMap in model.ts is the one place every field's resolution (contract source_ref/target_ref/boundary_refs, flow element_ref/contract_ref, boundary member_refs, component authority_refs) gets its id-to-kind answer from. It must index projection.regions, .components, .boundaries, .contracts, and .flows -- attention items and evolution changes are deliberately excluded, since no field this map resolves is documented to ever name either kind. A function that needs kind classification must accept this shared map as a parameter; it must never rebuild a narrower one locally (e.g. from componentRectById.keys() alone), because a locally-rebuilt map can only ever know about the kinds it was seeded from, and silently misreports every other real kind as nonexistent.
+    protects:
+      files:
+        - src/map/model.ts
+        - src/map/routing.ts
+        - src/map/layout.ts
+    required_tests:
+      - src/map/routing.test.ts
+      - src/map/layout.test.ts
+    evidence:
+      - 'ARCHITECT REVIEW (second pass) on PR #6: routeFlows rebuilt its own component-only idKind map internally, so a real Region/Boundary id was indistinguishable from a genuinely nonexistent one.'
+      - 'ARCHITECT REVIEW (third pass) on PR #6: even after routeFlows was fixed to accept the shared projection-wide map, that map itself only covered region/component/boundary -- a real Contract or Flow id named by any field was still misreported as unresolved_reference.'
+    contract: The single shared classifier (ResolvableKind / buildIdKindMap in src/map/model.ts) that every reference-resolution call site consults to distinguish unresolved_reference (id does not exist anywhere) from unrendered_reference_kind/wrong_kind_reference (id exists as a different real object) must index every kind a stableId reference field could plausibly name -- region, component, boundary, contract, and flow. Narrowing it to only the kinds this build currently draws geometry for, or reconstructing a smaller local map inside one routing function instead of threading the shared one through, silently misclassifies a real reference as though it were nonexistent.

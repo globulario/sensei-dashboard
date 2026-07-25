@@ -94,3 +94,55 @@ failure_modes:
       - sanitize/strip the dangerous prefix and still render an anchor (rewrites the target instead of refusing it)
     evidence:
       - 'ARCHITECT REVIEW: CHANGES REQUIRED on globulario/sensei-dashboard#5, finding #2, caught activeContextBlock() building its own anchor from ctx.url with no scheme check, alongside the same gap in the original externalSourceLink().'
+  - id: failure_mode.dashboard.map_reference_kind_narrowed_from_fixture_data
+    title: Architecture Map reference-resolution code narrows a field's permitted kind from what accepted fixtures contain, not what the schema declares
+    severity: high
+    protects:
+      files:
+        - src/map/routing.ts
+        - src/map/layout.ts
+    related_invariants:
+      - invariant.dashboard.map_reference_kind_scope_follows_schema_not_fixtures
+    required_tests:
+      - src/map/routing.test.ts
+      - src/map/layout.test.ts
+    forbidden_fix:
+      - inferring a reference field's permitted kind(s) by inspecting what the currently-accepted fixtures happen to contain, then encoding that as the field's only valid kind
+      - collapsing 'this id names a real, different-kind object' (valid data, unrendered) and 'this field's own contract says it must be a different kind' (genuine violation) into one diagnostic kind
+    evidence:
+      - 'ARCHITECT REVIEW (first pass) on PR #6: ''Reference kinds are being narrowed from fixture behavior rather than contract authority.'''
+      - Every accepted fixture's contract.source_ref/target_ref happened to name only Components, so the code (and its own header comment) asserted that as the field's only valid kind -- the schema itself never said so.
+  - id: failure_mode.dashboard.map_connector_geometry_computed_in_renderer
+    title: SVG renderer computes connector coordinates inline instead of consuming precomputed routes from the pure model
+    severity: high
+    protects:
+      files:
+        - src/map/render-svg.ts
+    related_invariants:
+      - invariant.dashboard.map_connector_geometry_owned_by_routing_model
+    required_tests:
+      - src/map/routing.test.ts
+    forbidden_fix:
+      - drawing a straight line/rect directly from a node's own rect coordinates to a target row/column that spans a wider area than that one node's own column, without routing through a dedicated gutter
+      - adding any x/y coordinate arithmetic inside render-svg.ts for a relationship (contract, flow, boundary membership, authority ref) instead of consuming a route already present on the model
+    evidence:
+      - 'ARCHITECT REVIEW (first pass) on PR #6, finding #2: authority-ref connector coordinates were computed with component.rect.x + component.rect.width / 2 directly inside buildSvg(), and boundary connectors were a raw <line> from a bare MapBoundaryConnector.point to the rail row''s y -- both straight lines, both drawn where the geometry was used, not where it was computed.'
+      - Fixed by moving both into routing.ts (buildGutterDropRoute, routeAuthorityConnectors) and changing MapBoundaryConnector.point to MapBoundaryConnector.route; render-svg.ts now only calls pathD(connector.route).
+  - id: failure_mode.dashboard.map_shared_kind_index_missing_contract_and_flow
+    title: A routing function reconstructs its own narrower id-to-kind map instead of accepting the shared one, or the shared map itself omits real object kinds
+    severity: high
+    protects:
+      files:
+        - src/map/model.ts
+        - src/map/routing.ts
+    related_invariants:
+      - invariant.dashboard.map_shared_kind_index_covers_every_referenceable_object_kind
+    required_tests:
+      - src/map/routing.test.ts
+    forbidden_fix:
+      - building a local id -> kind Map inside a routing/layout function from a narrower source (e.g. one already-resolved rect map's .keys()) instead of accepting and using the shared projection-wide idKind map
+      - adding a new real object kind to the projection (or a new field that can reference one) without also adding it to buildIdKindMap's coverage
+    evidence:
+      - 'ARCHITECT REVIEW (second pass): ''routeFlows builds its own component-only idKind map internally... so from its perspective a region id it has never seen is indistinguishable from truly nonexistent'' -- this was even rationalized as ''intentional'' in a test comment before being recognized as a real gap.'
+      - 'ARCHITECT REVIEW (third pass): ''the diagnostic kind index covers only region | component | boundary, not contract | flow'' -- flow.steps[*].contract_ref was also missing from the reference-kind matrix entirely as a result.'
+      - Fixed by widening ResolvableKind to include contract/flow and indexing projection.contracts/.flows in buildIdKindMap, then threading that one shared map through every call site instead of any local reconstruction.

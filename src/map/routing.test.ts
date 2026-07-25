@@ -22,11 +22,19 @@ function boundary(id: string, memberRefs: string[], overrides: Partial<Boundary>
   return { id, name: id, kind: "other", member_refs: memberRefs, state: "open", summary: "s", provenance: prov, ...overrides };
 }
 
-function idKindFor(regions: Region[], components: Component[], boundaries: Boundary[] = []): Map<string, ResolvableKind> {
+function idKindFor(
+  regions: Region[],
+  components: Component[],
+  boundaries: Boundary[] = [],
+  contracts: Contract[] = [],
+  flows: Flow[] = []
+): Map<string, ResolvableKind> {
   const map = new Map<string, ResolvableKind>();
   for (const r of regions) map.set(r.id, "region");
   for (const c of components) map.set(c.id, "component");
   for (const b of boundaries) map.set(b.id, "boundary");
+  for (const c of contracts) map.set(c.id, "contract");
+  for (const f of flows) map.set(f.id, "flow");
   return map;
 }
 
@@ -110,6 +118,58 @@ describe("routeContracts — endpoint resolution", () => {
 
     expect(result.contracts[0]!.boundaryRefs).toEqual([]);
     expect(result.diagnostics.some((d) => d.kind === "unrendered_reference_kind" && d.field === "boundary_refs")).toBe(true);
+  });
+
+  // ARCHITECT REVIEW (third pass) on PR #6: the shared idKind lookup only
+  // covered region/component/boundary, so a reference naming a real
+  // Contract or Flow id was misreported as unresolved_reference (as if it
+  // didn't exist) instead of unrendered_reference_kind. Fixed by widening
+  // ResolvableKind and buildIdKindMap in model.ts to index contract/flow
+  // ids too — these are the adversarial regressions for that gap.
+  it("diagnoses an endpoint naming a real Contract (self-reference by id) as unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const otherContract = contract("contract.other", "component.a", "component.a");
+    const idKind = idKindFor(regions, components, [], [otherContract]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const contracts = [contract("contract.x", "component.a", "contract.other")];
+    const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 0, height: 0 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "target_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+  });
+
+  it("diagnoses an endpoint naming a real Flow as unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const someFlow = flow("flow.x", [{ order: 1, element_ref: "component.a" }]);
+    const idKind = idKindFor(regions, components, [], [], [someFlow]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const contracts = [contract("contract.x", "component.a", "flow.x")];
+    const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 0, height: 0 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "target_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+
+  it("diagnoses a contract.boundary_refs entry naming a real Contract as unrendered_reference_kind", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const otherContract = contract("contract.other", "component.a", "component.a");
+    const idKind = idKindFor(regions, components, [], [otherContract]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const contracts = [contract("contract.x", "component.a", "component.a", { boundary_refs: ["contract.other"] })];
+    const result = routeContracts(contracts, rectById, new Map(), idKind, new Map(), { x: 0, y: 0, width: 0, height: 0 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "boundary_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
   });
 
   it("preserves direction verbatim for all four tokens", () => {
@@ -290,6 +350,22 @@ describe("routeFlows", () => {
     expect(result.flows[0]!.steps[0]!.contractId).toBeNull();
   });
 
+  it("a step's contract_ref naming a real Flow (not a Contract) is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const otherFlow = flow("flow.other", [{ order: 1, element_ref: "component.a" }]);
+    const idKind = idKindFor(regions, components, [], [], [otherFlow]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const f = flow("flow.x", [{ order: 1, element_ref: "component.a", contract_ref: "flow.other" }]);
+    const result = routeFlows([f], rectById, new Map(), new Map(), idKind, { x: 0, y: 0, width: 0, height: 0 });
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "steps[].contract_ref");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+    expect(result.flows[0]!.steps[0]!.contractId).toBeNull();
+  });
+
   it("a step's contract_ref naming an id that truly doesn't exist anywhere is still unresolved_reference", () => {
     const { rectById, idKind } = twoComponentSetup();
     const f = flow("flow.x", [{ order: 1, element_ref: "component.a", contract_ref: "contract.ghost" }]);
@@ -344,6 +420,37 @@ describe("routeBoundaries", () => {
 
     const b = boundary("boundary.x", ["boundary.other"]);
     const result = routeBoundaries([b, ...boundaries], rectById, new Map(), idKind, { x: 0, y: 0, width: 400, height: 400 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "member_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+
+  it("a member_refs entry naming a real Contract is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const someContract = contract("contract.x", "component.a", "component.a");
+    const idKind = idKindFor(regions, components, [], [someContract]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const b = boundary("boundary.x", ["contract.x"]);
+    const result = routeBoundaries([b], rectById, new Map(), idKind, { x: 0, y: 0, width: 400, height: 400 });
+
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "member_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+  });
+
+  it("a member_refs entry naming a real Flow is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a")];
+    const someFlow = flow("flow.x", [{ order: 1, element_ref: "component.a" }]);
+    const idKind = idKindFor(regions, components, [], [], [someFlow]);
+    const layout = placeMap(regions, components, idKind, new Map());
+    const rectById = new Map(layout.componentNodes.map((c) => [c.id, c.rect]));
+
+    const b = boundary("boundary.x", ["flow.x"]);
+    const result = routeBoundaries([b], rectById, new Map(), idKind, { x: 0, y: 0, width: 400, height: 400 });
 
     const d = result.diagnostics.find((x) => "field" in x && x.field === "member_refs");
     expect(d?.kind).toBe("unrendered_reference_kind");

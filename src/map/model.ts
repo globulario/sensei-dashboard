@@ -39,11 +39,20 @@ export interface RoutePath {
   points: RoutePoint[];
 }
 
-/** The kinds an explicit reference field in this schema may resolve
- * against (brief Law D's four permitted directions all terminate in one of
- * these three — see routing.ts's endpoint-resolution-scope comment for
- * exactly which field resolves against which kind). */
-export type ResolvableKind = "region" | "component" | "boundary";
+/** Every real object kind this map's shared id→kind lookup can identify —
+ * i.e. every kind an explicit reference field in this schema might
+ * plausibly name, whether or not this build currently draws geometry for
+ * that combination (see routing.ts's reference-kind matrix for exactly
+ * which field renders which kind). ARCHITECT REVIEW (third pass) on PR #6:
+ * this must cover every real projection object kind a stableId reference
+ * could name — region/component/boundary alone under-covers it, since a
+ * reference could just as easily name a real Contract or Flow id (e.g. a
+ * `contract.source_ref` typo'd into another contract's id). Attention
+ * items and evolution changes are deliberately excluded: no field this map
+ * resolves (brief Law D's explicit list) is documented to ever name either
+ * kind, so they stay outside this lookup's scope rather than being added
+ * speculatively. */
+export type ResolvableKind = "region" | "component" | "boundary" | "contract" | "flow";
 
 export interface MapLane {
   id: string;
@@ -183,12 +192,19 @@ export interface ArchitectureMapModel {
   diagnostics: MapDiagnostic[];
 }
 
-/** Local, pure id→kind lookup scoped to exactly the three kinds an explicit
- * reference field may resolve against (regions/components/boundaries —
- * never contracts/flows/attention). Deliberately not `ReferenceIndex`
- * (src/adapter/reference-index.ts): that class imports `elementHref`, which
- * reads `window.location`, and the pure model must have zero DOM
- * dependency (brief deliverable 10). This map is rebuilt fresh on every
+/** Local, pure id→kind lookup covering every `ResolvableKind` (region/
+ * component/boundary/contract/flow — see that type's own doc for why
+ * attention/evolution-changes are excluded). This is the single shared
+ * classifier every reference-resolution call site in layout.ts/routing.ts
+ * consults to tell "this id names a real object of a different kind" apart
+ * from "this id doesn't exist anywhere" — it must index every kind a
+ * reference field could plausibly name, not just the kinds this build
+ * currently draws geometry for (that narrower "what do we render"
+ * decision lives per-field in routing.ts's matrix, applied after this
+ * lookup, never baked into the lookup itself). Deliberately not
+ * `ReferenceIndex` (src/adapter/reference-index.ts): that class imports
+ * `elementHref`, which reads `window.location`, and the pure model must
+ * have zero DOM dependency (brief deliverable 10). Rebuilt fresh on every
  * call — cheap for a human-scale projection, and it keeps the model a pure
  * function of its input with no shared mutable state. */
 function buildIdKindMap(projection: SenseiDashboardProjectionV1): Map<string, ResolvableKind> {
@@ -196,6 +212,8 @@ function buildIdKindMap(projection: SenseiDashboardProjectionV1): Map<string, Re
   for (const r of projection.regions) map.set(r.id, "region");
   for (const c of projection.components) map.set(c.id, "component");
   for (const b of projection.boundaries) map.set(b.id, "boundary");
+  for (const c of projection.contracts) map.set(c.id, "contract");
+  for (const f of projection.flows) map.set(f.id, "flow");
   return map;
 }
 

@@ -47,6 +47,39 @@ function idKindFor(regions: Region[], components: Component[]): Map<string, Reso
   return map;
 }
 
+describe("ResolvableKind coverage (ARCHITECT REVIEW, third pass)", () => {
+  // The shared idKind lookup must index every real projection object kind
+  // a reference field could name — not just the three kinds that happen to
+  // have placeable geometry — so that a reference naming a real Contract
+  // or Flow id is correctly diagnosed as unrendered_reference_kind rather
+  // than misreported as unresolved_reference (as if the id didn't exist at
+  // all). component.authority_refs is the one field this module resolves
+  // directly; contract/flow endpoint resolution is covered in
+  // routing.test.ts.
+  it("an authority_refs entry naming a real Contract (not a Boundary) is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a", { authority_refs: ["contract.x"] })];
+    const idKind = idKindFor(regions, components);
+    idKind.set("contract.x", "contract");
+
+    const result = placeMap(regions, components, idKind, new Map());
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "authority_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+    expect(d?.kind).not.toBe("unresolved_reference");
+  });
+
+  it("an authority_refs entry naming a real Flow (not a Boundary) is unrendered_reference_kind, not unresolved_reference", () => {
+    const regions = [region("region.a")];
+    const components = [component("component.a", "region.a", { authority_refs: ["flow.x"] })];
+    const idKind = idKindFor(regions, components);
+    idKind.set("flow.x", "flow");
+
+    const result = placeMap(regions, components, idKind, new Map());
+    const d = result.diagnostics.find((x) => "field" in x && x.field === "authority_refs");
+    expect(d?.kind).toBe("unrendered_reference_kind");
+  });
+});
+
 describe("normalizeAnchorToken", () => {
   it("trims and lowercases", () => {
     expect(normalizeAnchorToken("  Backend  ")).toBe("backend");

@@ -1,0 +1,122 @@
+{
+  "$comment": "Workspace O1 contract inventory (docs/claude-workspace-o1-brief.md 'Required contract inventory'). One entry per contract in the AI Architecture Workspace extension (docs/architecture-workspace-v1.md, accepted contract head 2a019dc517f12a0984a1d2699408ce97f529a267). pinning_rule 'local' means: self-consistency (local digest) and fixture-schema validation only, no external cross-repo parity check -- see contract/pin.json's per-entry 'source' field and scripts/verify-schema-pin.mjs. pinning_rule 'pending_sensei_adoption' means: not yet canonical in globulario/sensei, so nothing is pinned yet; see docs/architecture-workspace-contracts-v1.md for the field mapping and the open ARCHITECT QUESTION.",
+  "contracts": [
+    {
+      "id": "sensei.workspace.identity.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei",
+      "producer_authority": "sensei-core",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "immutable-per-observation",
+      "pinning_rule": "pending_sensei_adoption",
+      "generated_type_target": null,
+      "fixture_directory": null,
+      "state": "documented_not_canonical",
+      "notes": "Field mapping researched and documented (docs/architecture-workspace-contracts-v1.md) -- no single Sensei RPC/tool returns this composed shape today; it composes GraphAuthority (proto), MetadataResponse.coverage_state, and ClaimDocumentBinding. No canonical JSON Schema exists in globulario/sensei for any of these Go/proto types. Adding one is a Sensei-core architectural decision, not a Dashboard-repo unilateral action -- see the ARCHITECT QUESTION in this PR's evidence."
+    },
+    {
+      "id": "sensei.workspace.admission.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei",
+      "producer_authority": "sensei-core",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "immutable-per-decision",
+      "pinning_rule": "pending_sensei_adoption",
+      "generated_type_target": null,
+      "fixture_directory": null,
+      "state": "documented_not_canonical",
+      "notes": "Field mapping researched and documented (docs/architecture-workspace-contracts-v1.md) -- mirrors the real admission.Decision/admission.Verification Go structs (golang/architecture/admission/admission.go), which are local-filesystem operations with no gRPC RPC and no canonical JSON Schema today. Same blocker and same ARCHITECT QUESTION as sensei.workspace.identity.v1."
+    },
+    {
+      "id": "sensei.dashboard.architect-session.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "mutable-orchestration-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-architect-session-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/architect-session",
+      "state": "implemented",
+      "notes": "Binds one persistent primary-architect conversation thread. Governed sessions require an admission_reference (schema-enforced)."
+    },
+    {
+      "id": "sensei.dashboard.agent-run.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "mutable-orchestration-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-agent-run-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/agent-run",
+      "state": "implemented",
+      "notes": "Binds one bounded worker or architect/reviewer attempt. Supports read-only runs without forcing mutation-only fields (worktree_id/expected_head_sha nullable)."
+    },
+    {
+      "id": "sensei.dashboard.execution-receipt.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "immutable-evidence-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-execution-receipt-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/execution-receipt",
+      "state": "implemented",
+      "notes": "Six independent completion_facts fields (worker_completed, tests_passed, ci_observed_green, sensei_completion_verified, architect_exact_sha_approval, human_merge_occurred) -- none implies another."
+    },
+    {
+      "id": "sensei.dashboard.provider-capabilities.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "mutable-observation-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-provider-capabilities-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/provider-capabilities",
+      "state": "implemented",
+      "notes": "Four-state support enum (supported/unsupported/unknown/conditional) per capability -- a boolean is insufficient when support depends on runtime mode."
+    },
+    {
+      "id": "sensei.dashboard.provider-status.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "mutable-observation-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-provider-status-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/provider-status",
+      "state": "implemented",
+      "notes": "mcp_configured and mcp_verified are independent booleans -- configured MCP is not verified MCP, and provider readiness is not workspace admission."
+    },
+    {
+      "id": "sensei.dashboard.provider-event.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "immutable-event-record",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-provider-event-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/provider-event",
+      "state": "implemented",
+      "notes": "Strict discriminated union over 18 event kinds (architecture-workspace-v1.md §13), each with its own small bounded payload."
+    },
+    {
+      "id": "sensei.dashboard.github-action.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-dashboard",
+      "consumer_repositories": ["globulario/sensei-dashboard"],
+      "mutability_class": "mutable-request-immutable-result",
+      "pinning_rule": "local",
+      "generated_type_target": "contract/generated/workspace-github-action-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/github-action",
+      "state": "implemented",
+      "notes": "Request/result envelope pair (oneOf, mutually exclusive shapes), not a runner implementation. Automatic merge is not a representable action_kind."
+    }
+  ]
+}

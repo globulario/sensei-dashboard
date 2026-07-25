@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-execution-receipt-v1.json",
+  "title": "Sensei Dashboard Workspace Execution Receipt V1",
+  "description": "A Dashboard/runner-owned summary of immutable run evidence after one bounded attempt (docs/architecture-workspace-v1.md §13, docs/claude-workspace-o1-brief.md §5). Reports evidence, never a trust claim -- it must not assert that code is safe, correct, architecturally complete, or mergeable merely because a run completed (Law E).",
+  "$comment": "schema_version is a const. Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A. completion_facts intentionally keeps six independent fields rather than one collapsed status, because the brief requires: worker completed, tests passed, CI observed green, Sensei completion verification passed, architect exact-SHA approval exists, human merge occurred -- none may imply another.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "run_id",
+    "job_id",
+    "provider",
+    "role",
+    "repository_domain",
+    "governing_snapshot",
+    "expected_head_sha",
+    "worktree_id",
+    "assurance_mode",
+    "accepted_governing_brief_ref",
+    "admission_reference",
+    "command_summaries",
+    "changed_files",
+    "tests",
+    "ci_observations",
+    "github_write_refs",
+    "completion_facts",
+    "limitations",
+    "outcome_detail",
+    "redaction_declaration",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "sensei.dashboard.execution-receipt.v1" },
+    "receipt_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "job_id": { "type": "string", "minLength": 1 },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_id", "runtime"],
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 }
+      }
+    },
+    "role": { "type": "string", "enum": ["implementer", "architect", "reviewer"] },
+    "repository_domain": { "type": "string", "minLength": 1 },
+    "governing_snapshot": { "$ref": "#/$defs/governingSnapshot" },
+    "expected_head_sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+    "worktree_id": { "type": ["string", "null"] },
+    "assurance_mode": { "$ref": "#/$defs/assuranceMode" },
+    "accepted_governing_brief_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brief_path", "accepted_sha"],
+      "properties": {
+        "brief_path": { "type": ["string", "null"] },
+        "accepted_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "admission_reference": {
+      "oneOf": [{ "$ref": "#/$defs/admissionReference" }, { "type": "null" }]
+    },
+    "command_summaries": {
+      "type": "array",
+      "$comment": "Summary only -- never raw command text as implicit authority (Law B/E).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["summary_id", "approved", "outcome"],
+        "properties": {
+          "summary_id": { "type": "string", "minLength": 1 },
+          "approved": { "type": ["boolean", "null"] },
+          "outcome": { "type": "string", "enum": ["completed", "failed", "cancelled", "pending"] }
+        }
+      }
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "change_kind", "digest_sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "change_kind": { "type": "string", "enum": ["added", "modified", "removed", "renamed"] },
+          "digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "outcome"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "outcome": { "type": "string", "enum": ["passed", "failed", "skipped", "unknown"] }
+        }
+      }
+    },
+    "ci_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "check_name", "status", "sha", "observed_at"],
+        "properties": {
+          "provider": { "type": "string", "minLength": 1 },
+          "check_name": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["success", "failure", "pending", "unknown"] },
+          "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "observed_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "github_write_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "$comment": "References to workspace-github-action-v1 result envelopes -- not embedded inline, to keep this schema family free of cross-file $ref."
+    },
+    "completion_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worker_completed",
+        "tests_passed",
+        "ci_observed_green",
+        "sensei_completion_verified",
+        "architect_exact_sha_approval",
+        "human_merge_occurred"
+      ],
+      "$comment": "Six independent facts -- none implies another (claude-workspace-o1-brief.md §5). A run reporting worker_completed=yes says nothing about tests_passed, and tests_passed=yes says nothing about human_merge_occurred.",
+      "properties": {
+        "worker_completed": { "$ref": "#/$defs/factState" },
+        "tests_passed": { "$ref": "#/$defs/factState" },
+        "ci_observed_green": { "$ref": "#/$defs/factState" },
+        "sensei_completion_verified": { "$ref": "#/$defs/factState" },
+        "architect_exact_sha_approval": { "$ref": "#/$defs/factState" },
+        "human_merge_occurred": { "$ref": "#/$defs/factState" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "outcome_detail": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "reason"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["cancelled", "failed", "refused"] },
+            "reason": { "$ref": "#/$defs/reason" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "redaction_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["redacted", "note"],
+      "properties": {
+        "redacted": { "type": "boolean" },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "$comment": "Law F, governed half: a governed record must bind a real admission_reference.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "governed" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "required": ["admission_reference"],
+        "properties": { "admission_reference": { "$ref": "#/$defs/admissionReference" } }
+      }
+    },
+    {
+      "$comment": "Law F, manual half: a manual record must not fabricate an admission_reference -- forced null, not merely unconstrained.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "manual" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "properties": { "admission_reference": { "type": "null" } }
+      }
+    }
+  ],
+  "$defs": {
+    "assuranceMode": {
+      "type": "string",
+      "enum": ["manual", "governed"]
+    },
+    "factState": {
+      "type": "string",
+      "$comment": "Mirrors the unknown-vs-not_applicable distinction already established for KnowledgeState/Severity in dashboard-projection-v1.schema.json: unknown means a fact is meaningful but not known; not_applicable means no fact is meaningful here (e.g. tests_passed is not_applicable for a pure read-only review run).",
+      "enum": ["yes", "no", "unknown", "not_applicable"]
+    },
+    "governingSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_domain", "revision", "revision_status", "tree_digest_sha256", "graph_digest_sha256", "graph_digest_status"],
+      "properties": {
+        "repository_domain": { "type": "string", "minLength": 1 },
+        "revision": { "type": ["string", "null"] },
+        "revision_status": { "type": "string", "enum": ["resolved", "unavailable", "not_git", "not_requested"] },
+        "tree_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_status": { "type": "string", "enum": ["resolved", "unavailable", "unknown"] }
+      }
+    },
+    "admissionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["admission_id", "decision", "decision_digest_sha256", "policy_id"],
+      "properties": {
+        "admission_id": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "enum": ["admitted", "admitted_with_conditions", "waiting", "refused", "uncertifiable"] },
+        "decision_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "policy_id": { "type": ["string", "null"] }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

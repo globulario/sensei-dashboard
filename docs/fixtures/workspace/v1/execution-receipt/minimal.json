@@ -1,0 +1,42 @@
+{
+  "schema_version": "sensei.dashboard.execution-receipt.v1",
+  "receipt_id": "receipt.min1",
+  "run_id": "run.min1",
+  "job_id": "job.min1",
+  "provider": { "provider_id": "claude-code", "runtime": "claude-code" },
+  "role": "reviewer",
+  "repository_domain": "github.com/example/repo",
+  "governing_snapshot": {
+    "repository_domain": "github.com/example/repo",
+    "revision": null,
+    "revision_status": "not_requested",
+    "tree_digest_sha256": null,
+    "graph_digest_sha256": null,
+    "graph_digest_status": "unknown"
+  },
+  "expected_head_sha": null,
+  "worktree_id": null,
+  "assurance_mode": "manual",
+  "accepted_governing_brief_ref": {
+    "brief_path": null,
+    "accepted_sha": "000000000000000000000000000000000000000a"
+  },
+  "admission_reference": null,
+  "command_summaries": [],
+  "changed_files": [],
+  "tests": [],
+  "ci_observations": [],
+  "github_write_refs": [],
+  "completion_facts": {
+    "worker_completed": "unknown",
+    "tests_passed": "not_applicable",
+    "ci_observed_green": "not_applicable",
+    "sensei_completion_verified": "unknown",
+    "architect_exact_sha_approval": "unknown",
+    "human_merge_occurred": "unknown"
+  },
+  "limitations": [],
+  "outcome_detail": null,
+  "redaction_declaration": { "redacted": false, "note": null },
+  "created_at": "2026-07-25T00:00:00Z"
+}

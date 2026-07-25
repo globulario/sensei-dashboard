@@ -1,0 +1,31 @@
+{
+  "schema_version": "sensei.dashboard.agent-run.v1",
+  "run_id": "run.min1",
+  "job_id": "job.min1",
+  "repository_domain": "github.com/example/repo",
+  "governing_snapshot": {
+    "repository_domain": "github.com/example/repo",
+    "revision": null,
+    "revision_status": "not_requested",
+    "tree_digest_sha256": null,
+    "graph_digest_sha256": null,
+    "graph_digest_status": "unknown"
+  },
+  "expected_head_sha": null,
+  "worktree_id": null,
+  "task_ref": null,
+  "role": "reviewer",
+  "provider": { "provider_id": "claude-code", "runtime": "claude-code" },
+  "assurance_mode": "manual",
+  "required_capabilities": [],
+  "operation_class": "read_only",
+  "governing_contract_ref": {
+    "brief_path": null,
+    "accepted_sha": "000000000000000000000000000000000000000a"
+  },
+  "admission_reference": null,
+  "lifecycle_state": "queued",
+  "cancellation": null,
+  "created_at": "2026-07-25T00:00:00Z",
+  "updated_at": "2026-07-25T00:00:00Z"
+}

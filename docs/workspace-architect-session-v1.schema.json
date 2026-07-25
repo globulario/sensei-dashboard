@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-architect-session-v1.json",
+  "title": "Sensei Dashboard Workspace Architect Session V1",
+  "description": "A Dashboard/runner-owned record of one persistent primary-architect conversation thread (docs/architecture-workspace-v1.md §5, docs/claude-workspace-o1-brief.md §2). Mutable local orchestration state -- not architectural truth, not part of dashboard-projection-v1, and never a claim that this session is the same stored thread as an ordinary browser chat conversation.",
+  "$comment": "schema_version is a const: any field addition, removal, rename, or semantic change requires a new schema identifier/version. This contract is Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A -- it does not define Sensei admission truth, it only records what a governed session was told at admission time (governing_snapshot/admission_reference), citing Sensei's real ClaimDocumentBinding/admission.Decision shapes (globulario/sensei golang/architecture/claim_document.go, golang/architecture/admission/admission.go) rather than a byte-pinned Sensei wire format, since no canonical JSON Schema for those Go types exists yet (see docs/architecture-workspace-contracts-v1.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "repository_domain",
+    "architect_runtime",
+    "assurance_mode",
+    "governing_snapshot",
+    "lifecycle_state",
+    "created_at",
+    "updated_at",
+    "admission_reference",
+    "active_context",
+    "continuity_refs"
+  ],
+  "properties": {
+    "schema_version": { "const": "sensei.dashboard.architect-session.v1" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "repository_domain": { "type": "string", "minLength": 1 },
+    "architect_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_id", "runtime", "thread_id", "resumable"],
+      "$comment": "thread_id/resumable describe the embedded runtime's own continuity primitives only (e.g. codex app-server thread ids) -- never a claim of identity with an ordinary browser ChatGPT conversation (architecture-workspace-v1.md §5).",
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 },
+        "account_mode": { "type": ["string", "null"] },
+        "thread_id": { "type": ["string", "null"] },
+        "resumable": { "type": ["boolean", "null"] }
+      }
+    },
+    "assurance_mode": { "$ref": "#/$defs/assuranceMode" },
+    "governing_snapshot": { "$ref": "#/$defs/governingSnapshot" },
+    "admission_reference": {
+      "oneOf": [{ "$ref": "#/$defs/admissionReference" }, { "type": "null" }]
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "$comment": "created/authenticating/ready/active/paused are non-terminal; expired/terminated/refused are terminal.",
+      "enum": ["created", "authenticating", "ready", "active", "paused", "expired", "terminated", "refused"]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "$comment": "Recorded evidence timestamps only -- never ordering/causal authority over other records (claude-workspace-o1-brief.md §2)."
+    },
+    "active_context": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "issue_ref": { "type": ["string", "null"] },
+            "pr_ref": { "type": ["string", "null"] },
+            "task_id": { "type": ["string", "null"] }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "continuity_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "$comment": "Bounded references into durable project state (Sensei decisions, GitHub issues/PRs/comments) the architect uses to reconstruct continuity -- never a raw chat transcript (architecture-workspace-v1.md §5)."
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "Law F, governed half: a governed record must bind a real admission_reference.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "governed" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "required": ["admission_reference"],
+        "properties": { "admission_reference": { "$ref": "#/$defs/admissionReference" } }
+      }
+    },
+    {
+      "$comment": "Law F, manual half: a manual record must not fabricate an admission_reference -- forced null, not merely unconstrained. Manual and governed stay structurally distinct.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "manual" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "properties": { "admission_reference": { "type": "null" } }
+      }
+    }
+  ],
+  "$defs": {
+    "assuranceMode": {
+      "type": "string",
+      "$comment": "A manual (CLI/editor-direct) session must never be structurally indistinguishable from an admission-gated governed run (claude-workspace-o1-brief.md Law F).",
+      "enum": ["manual", "governed"]
+    },
+    "governingSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_domain", "revision", "revision_status", "tree_digest_sha256", "graph_digest_sha256", "graph_digest_status"],
+      "$comment": "Dashboard-owned snake_case encoding of Sensei's real ClaimDocumentBinding (globulario/sensei golang/architecture/claim_document.go:27-34) -- the exact binding a governed job's admission was evaluated against, snapshotted at admission time so the job's own later edits to docs/awareness/**/.sensei/config.yaml cannot change the policy identity it is held to (Law G).",
+      "properties": {
+        "repository_domain": { "type": "string", "minLength": 1 },
+        "revision": { "type": ["string", "null"] },
+        "revision_status": { "type": "string", "enum": ["resolved", "unavailable", "not_git", "not_requested"] },
+        "tree_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_status": { "type": "string", "enum": ["resolved", "unavailable", "unknown"] }
+      }
+    },
+    "admissionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["admission_id", "decision", "decision_digest_sha256", "policy_id"],
+      "$comment": "Mirrors Sensei's real admission.Decision identity fields (globulario/sensei golang/architecture/admission/admission.go:226-256) -- a reference to a decision Sensei made, not a Dashboard-invented admission authority.",
+      "properties": {
+        "admission_id": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "enum": ["admitted", "admitted_with_conditions", "waiting", "refused", "uncertifiable"] },
+        "decision_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "policy_id": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

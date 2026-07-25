@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-provider-status-v1.json",
+  "title": "Sensei Dashboard Workspace Provider Status V1",
+  "description": "Observed readiness for one agent provider (docs/architecture-workspace-v1.md §14, docs/claude-workspace-o1-brief.md §4.2). Configured MCP is not verified MCP; provider readiness is not workspace admission -- mcp_configured and mcp_verified are kept as two independent booleans specifically so the second can never be silently inferred from the first.",
+  "$comment": "schema_version is a const. Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider_id", "status", "mcp_configured", "mcp_verified", "detail", "observed_at"],
+  "properties": {
+    "schema_version": { "const": "sensei.dashboard.provider-status.v1" },
+    "provider_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["absent", "installed", "unauthenticated", "authenticating", "ready", "expired", "blocked", "unavailable", "unknown"]
+    },
+    "mcp_configured": {
+      "type": "boolean",
+      "$comment": "True only means a server entry exists in provider configuration -- never proof it was reached."
+    },
+    "mcp_verified": {
+      "type": "boolean",
+      "$comment": "True only after a successful typed workspace-identity/tool-discovery call. This contract does not itself perform that verification (O2+); it only records the fact. Must never be inferred as true merely because mcp_configured is true."
+    },
+    "detail": { "type": ["string", "null"] },
+    "observed_at": { "type": "string", "format": "date-time" }
+  }
+}

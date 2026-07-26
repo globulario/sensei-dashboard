@@ -1,0 +1,19 @@
+{
+  "schema_version": "sensei.dashboard.provider-capabilities.v1",
+  "provider_id": "unknown-provider",
+  "runtime": "unknown",
+  "capabilities": {
+    "interactive_auth": "unknown",
+    "browser_auth": "unknown",
+    "headless_execution": "unknown",
+    "streaming_output": "unknown",
+    "session_resume": "unknown",
+    "mcp": "unknown",
+    "skills": "unknown",
+    "sandboxing": "unknown",
+    "command_approvals": "unknown",
+    "file_approvals": "unknown",
+    "structured_output": "unknown"
+  },
+  "recorded_at": "2026-07-25T00:00:00Z"
+}

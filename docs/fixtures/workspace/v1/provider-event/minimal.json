@@ -1,0 +1,11 @@
+{
+  "schema_version": "sensei.dashboard.provider-event.v1",
+  "event_id": "event.min1",
+  "run_id": "run.min1",
+  "sequence": 0,
+  "event_kind": "Started",
+  "payload": {},
+  "recorded_at": "2026-07-25T00:00:00Z",
+  "native_event_ref": null,
+  "redaction_state": "none"
+}

@@ -22,6 +22,7 @@ The dashboard must never infer architectural meaning from raw RDF, artifact coun
 
 - [Dashboard V1 product and semantic contract](docs/architecture-dashboard-v1.md)
 - [AI Architecture Workspace V1 extension](docs/architecture-workspace-v1.md)
+- [Workspace O1 contract guide](docs/architecture-workspace-contracts-v1.md)
 - [Dashboard Projection V1 JSON Schema](docs/dashboard-projection-v1.schema.json)
 - [Agent Handoff V1 JSON Schema](docs/agent-handoff-v1.schema.json)
 - [Claude Stage 1 implementation brief](docs/claude-stage-1-brief.md)

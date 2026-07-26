@@ -45,5 +45,15 @@ test("generated root types exist for both schemas and stay closed (no index sign
 
 test("every schema file targeted for generation is listed exactly once", () => {
   const files = targets.map((t) => t.schemaFile);
-  assert.deepEqual(files.sort(), ["agent-handoff-v1.schema.json", "dashboard-projection-v1.schema.json"]);
+  assert.deepEqual(files.sort(), [
+    "agent-handoff-v1.schema.json",
+    "dashboard-projection-v1.schema.json",
+    "workspace-agent-run-v1.schema.json",
+    "workspace-architect-session-v1.schema.json",
+    "workspace-execution-receipt-v1.schema.json",
+    "workspace-github-action-v1.schema.json",
+    "workspace-provider-capabilities-v1.schema.json",
+    "workspace-provider-event-v1.schema.json",
+    "workspace-provider-status-v1.schema.json",
+  ]);
 });

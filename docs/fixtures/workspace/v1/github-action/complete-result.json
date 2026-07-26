@@ -1,0 +1,16 @@
+{
+  "schema_version": "sensei.dashboard.github-action.v1",
+  "kind": "result",
+  "action_kind": "create_draft_pr",
+  "idempotency_key": "idem.o1.1",
+  "status": "succeeded",
+  "observed": {
+    "repository_domain": "github.com/globulario/sensei-dashboard",
+    "issue_ref": null,
+    "pr_ref": "pull/11",
+    "sha": "9416f66713b74870b289e9025e4968876b32dae7",
+    "url": "https://github.com/globulario/sensei-dashboard/pull/11"
+  },
+  "reason": null,
+  "observed_at": "2026-07-25T09:32:00Z"
+}

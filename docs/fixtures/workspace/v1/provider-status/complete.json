@@ -1,0 +1,9 @@
+{
+  "schema_version": "sensei.dashboard.provider-status.v1",
+  "provider_id": "claude-code",
+  "status": "ready",
+  "mcp_configured": true,
+  "mcp_verified": true,
+  "detail": "workspace identity verified against github.com/globulario/sensei-dashboard at 8a45f3f",
+  "observed_at": "2026-07-25T09:00:00Z"
+}

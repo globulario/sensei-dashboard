@@ -1,0 +1,58 @@
+{
+  "schema_version": "sensei.dashboard.execution-receipt.v1",
+  "receipt_id": "receipt.o1.1",
+  "run_id": "run.o1.1",
+  "job_id": "job.o1.1",
+  "provider": { "provider_id": "claude-code", "runtime": "claude-code" },
+  "role": "implementer",
+  "repository_domain": "github.com/globulario/sensei-dashboard",
+  "governing_snapshot": {
+    "repository_domain": "github.com/globulario/sensei-dashboard",
+    "revision": "8a45f3f1e237a2e83352b01fcd417a3898efe2b4",
+    "revision_status": "resolved",
+    "tree_digest_sha256": "111111111111111111111111111111111111111111111111111111111111111b",
+    "graph_digest_sha256": "222222222222222222222222222222222222222222222222222222222222222c",
+    "graph_digest_status": "resolved"
+  },
+  "expected_head_sha": "9416f66713b74870b289e9025e4968876b32dae7",
+  "worktree_id": "worktree.o1.1",
+  "assurance_mode": "governed",
+  "accepted_governing_brief_ref": {
+    "brief_path": "docs/claude-workspace-o1-brief.md",
+    "accepted_sha": "968fdc02b4f13f3b83ffbdd99ec1186d8466cf09"
+  },
+  "admission_reference": {
+    "admission_id": "admission.9f8e7d",
+    "decision": "admitted_with_conditions",
+    "decision_digest_sha256": "333333333333333333333333333333333333333333333333333333333333333d",
+    "policy_id": "policy.default"
+  },
+  "command_summaries": [
+    { "summary_id": "cmd.1", "approved": true, "outcome": "completed" },
+    { "summary_id": "cmd.2", "approved": true, "outcome": "completed" }
+  ],
+  "changed_files": [
+    { "path": "docs/workspace-agent-run-v1.schema.json", "change_kind": "added", "digest_sha256": "444444444444444444444444444444444444444444444444444444444444444e" },
+    { "path": "scripts/lib/generate.mjs", "change_kind": "modified", "digest_sha256": null }
+  ],
+  "tests": [
+    { "name": "workspace-fixtures.test.mjs", "outcome": "passed" },
+    { "name": "generated-types.test.mjs", "outcome": "passed" }
+  ],
+  "ci_observations": [
+    { "provider": "github-actions", "check_name": "dashboard-app", "status": "success", "sha": "9416f66713b74870b289e9025e4968876b32dae7", "observed_at": "2026-07-25T09:45:00Z" }
+  ],
+  "github_write_refs": ["github-action.result.1"],
+  "completion_facts": {
+    "worker_completed": "yes",
+    "tests_passed": "yes",
+    "ci_observed_green": "yes",
+    "sensei_completion_verified": "unknown",
+    "architect_exact_sha_approval": "unknown",
+    "human_merge_occurred": "no"
+  },
+  "limitations": ["Sensei-owned workspace-identity/admission contracts are documented, not yet canonical -- see docs/architecture-workspace-contracts-v1.md"],
+  "outcome_detail": null,
+  "redaction_declaration": { "redacted": false, "note": null },
+  "created_at": "2026-07-25T09:45:00Z"
+}

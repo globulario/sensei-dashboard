@@ -1,0 +1,9 @@
+{
+  "schema_version": "sensei.dashboard.provider-status.v1",
+  "provider_id": "unknown-provider",
+  "status": "unknown",
+  "mcp_configured": false,
+  "mcp_verified": false,
+  "detail": null,
+  "observed_at": "2026-07-25T00:00:00Z"
+}

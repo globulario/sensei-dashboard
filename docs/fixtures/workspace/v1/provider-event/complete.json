@@ -1,0 +1,11 @@
+{
+  "schema_version": "sensei.dashboard.provider-event.v1",
+  "event_id": "event.o1.42",
+  "run_id": "run.o1.1",
+  "sequence": 42,
+  "event_kind": "FileChanged",
+  "payload": { "path": "docs/workspace-agent-run-v1.schema.json", "change_kind": "added" },
+  "recorded_at": "2026-07-25T09:31:00Z",
+  "native_event_ref": "native.evt.9981",
+  "redaction_state": "none"
+}

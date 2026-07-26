@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-provider-event-v1.json",
+  "title": "Sensei Dashboard Workspace Provider Event V1",
+  "description": "One normalized event from the runner-translated provider event stream (docs/architecture-workspace-v1.md §13, docs/claude-workspace-o1-brief.md §4.3). A strict discriminated union keyed on event_kind, each kind carrying its own small bounded payload -- deliberately not one giant event object with dozens of optional fields.",
+  "$comment": "schema_version is a const. Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A. sequence is supplied by the event owner (the runner) and is monotonically ordered per run -- it is evidence of emission order, not a claim about wall-clock simultaneity across runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "run_id", "sequence", "event_kind", "payload", "recorded_at", "native_event_ref", "redaction_state"],
+  "properties": {
+    "schema_version": { "const": "sensei.dashboard.provider-event.v1" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "Started",
+        "AuthenticationRequired",
+        "WorkspaceAdmissionStarted",
+        "WorkspaceAdmitted",
+        "PlanProduced",
+        "ToolRequested",
+        "ApprovalRequested",
+        "CommandStarted",
+        "CommandFinished",
+        "FileChanged",
+        "TestStarted",
+        "TestFinished",
+        "SenseiRefused",
+        "GitHubUpdated",
+        "WaitingForHuman",
+        "Completed",
+        "Failed",
+        "Cancelled"
+      ]
+    },
+    "payload": true,
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "native_event_ref": { "type": ["string", "null"] },
+    "redaction_state": { "type": "string", "enum": ["none", "partial", "full"] }
+  },
+  "oneOf": [
+    { "required": ["event_kind", "payload"], "properties": { "event_kind": { "const": "Started" }, "payload": { "$ref": "#/$defs/emptyPayload" } } },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "AuthenticationRequired" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider_id"],
+          "properties": { "provider_id": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    { "required": ["event_kind", "payload"], "properties": { "event_kind": { "const": "WorkspaceAdmissionStarted" }, "payload": { "$ref": "#/$defs/emptyPayload" } } },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "WorkspaceAdmitted" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["admission_id"],
+          "properties": { "admission_id": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "PlanProduced" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary"],
+          "properties": { "summary": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "ToolRequested" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tool_name"],
+          "properties": { "tool_name": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "ApprovalRequested" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approval_kind", "summary_id"],
+          "properties": {
+            "approval_kind": { "type": "string", "enum": ["command", "file"] },
+            "summary_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "CommandStarted" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary_id"],
+          "properties": { "summary_id": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "CommandFinished" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary_id", "outcome"],
+          "properties": {
+            "summary_id": { "type": "string", "minLength": 1 },
+            "outcome": { "type": "string", "enum": ["completed", "failed", "cancelled"] }
+          }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "FileChanged" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "change_kind"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "change_kind": { "type": "string", "enum": ["added", "modified", "removed", "renamed"] }
+          }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "TestStarted" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "TestFinished" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "outcome"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "outcome": { "type": "string", "enum": ["passed", "failed", "skipped", "unknown"] }
+          }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "SenseiRefused" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": { "reason": { "$ref": "#/$defs/reason" } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "GitHubUpdated" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action_ref"],
+          "properties": { "action_ref": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "WaitingForHuman" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": { "reason": { "type": ["string", "null"] } }
+        }
+      }
+    },
+    { "required": ["event_kind", "payload"], "properties": { "event_kind": { "const": "Completed" }, "payload": { "$ref": "#/$defs/emptyPayload" } } },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "Failed" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": { "reason": { "$ref": "#/$defs/reason" } }
+        }
+      }
+    },
+    {
+      "required": ["event_kind", "payload"],
+      "properties": {
+        "event_kind": { "const": "Cancelled" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": { "reason": { "$ref": "#/$defs/reason" } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "emptyPayload": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

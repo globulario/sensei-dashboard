@@ -1,0 +1,19 @@
+{
+  "schema_version": "sensei.dashboard.github-action.v1",
+  "kind": "request",
+  "action_kind": "create_draft_pr",
+  "idempotency_key": "idem.o1.1",
+  "repository_domain": "github.com/globulario/sensei-dashboard",
+  "job_id": "job.o1.1",
+  "role": "implementer",
+  "issue_ref": null,
+  "pr_ref": null,
+  "expected_head_sha": null,
+  "human_confirmation": { "required": true, "state": "pending" },
+  "payload": {
+    "title": "feat(workspace): implement O1 governing contracts",
+    "body": "Implements docs/claude-workspace-o1-brief.md at accepted head 968fdc0.",
+    "base_sha": "8a45f3f1e237a2e83352b01fcd417a3898efe2b4",
+    "head_sha": "9416f66713b74870b289e9025e4968876b32dae7"
+  }
+}

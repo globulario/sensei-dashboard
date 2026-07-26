@@ -1,0 +1,14 @@
+{
+  "schema_version": "sensei.dashboard.github-action.v1",
+  "kind": "request",
+  "action_kind": "inspect_repository_state",
+  "idempotency_key": "idem.min1",
+  "repository_domain": "github.com/example/repo",
+  "job_id": "job.min1",
+  "role": "reviewer",
+  "issue_ref": null,
+  "pr_ref": null,
+  "expected_head_sha": null,
+  "human_confirmation": { "required": false, "state": "not_required" },
+  "payload": { "title": null, "body": null, "base_sha": null, "head_sha": null }
+}

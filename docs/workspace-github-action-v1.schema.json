@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-github-action-v1.json",
+  "title": "Sensei Dashboard Workspace GitHub Action V1",
+  "description": "A governed GitHub action request or result envelope for the future runner gateway (docs/architecture-workspace-v1.md §10, docs/claude-workspace-o1-brief.md §6). Defines the envelope shape only -- it does not implement GitHub writes. Automatic merge is deliberately not a representable action_kind.",
+  "$comment": "schema_version is a const. Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A. A result must report observed GitHub identity after the action and must never claim success from a locally predicted state -- result.observed is always populated from what was actually read back, never echoed from the request. Request and result are two fully separate, mutually exclusive shapes (oneOf), not one flat object with optional fields from both sides.",
+  "oneOf": [{ "$ref": "#/$defs/requestEnvelope" }, { "$ref": "#/$defs/resultEnvelope" }],
+  "$defs": {
+    "actionKind": {
+      "type": "string",
+      "enum": [
+        "inspect_repository_state",
+        "inspect_issue_state",
+        "inspect_pr_state",
+        "inspect_commit_state",
+        "inspect_check_state",
+        "create_issue",
+        "update_issue",
+        "create_draft_pr",
+        "post_comment",
+        "post_exact_sha_review",
+        "mark_ready_for_review",
+        "request_human_merge_authorization"
+      ]
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    },
+    "requestEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "action_kind",
+        "idempotency_key",
+        "repository_domain",
+        "job_id",
+        "role",
+        "issue_ref",
+        "pr_ref",
+        "expected_head_sha",
+        "human_confirmation",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": { "const": "sensei.dashboard.github-action.v1" },
+        "kind": { "const": "request" },
+        "action_kind": { "$ref": "#/$defs/actionKind" },
+        "idempotency_key": { "type": "string", "minLength": 1 },
+        "repository_domain": { "type": "string", "minLength": 1 },
+        "job_id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "enum": ["implementer", "architect", "reviewer"] },
+        "issue_ref": { "type": ["string", "null"] },
+        "pr_ref": { "type": ["string", "null"] },
+        "expected_head_sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+        "human_confirmation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "state"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "state": { "type": "string", "enum": ["not_required", "pending", "confirmed", "denied"] }
+          }
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": ["string", "null"] },
+            "body": { "type": ["string", "null"] },
+            "base_sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+            "head_sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" }
+          }
+        }
+      }
+    },
+    "resultEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "kind", "action_kind", "idempotency_key", "status", "observed", "reason", "observed_at"],
+      "properties": {
+        "schema_version": { "const": "sensei.dashboard.github-action.v1" },
+        "kind": { "const": "result" },
+        "action_kind": { "$ref": "#/$defs/actionKind" },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "$comment": "Echoes the originating request's idempotency_key so a result can be correlated back to its request."
+        },
+        "status": { "type": "string", "enum": ["succeeded", "failed", "refused"] },
+        "observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository_domain", "issue_ref", "pr_ref", "sha", "url"],
+          "properties": {
+            "repository_domain": { "type": ["string", "null"] },
+            "issue_ref": { "type": ["string", "null"] },
+            "pr_ref": { "type": ["string", "null"] },
+            "sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+            "url": { "type": ["string", "null"] }
+          }
+        },
+        "reason": {
+          "oneOf": [{ "$ref": "#/$defs/reason" }, { "type": "null" }]
+        },
+        "observed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

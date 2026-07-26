@@ -1,0 +1,26 @@
+{
+  "schema_version": "sensei.dashboard.architect-session.v1",
+  "session_id": "session.min1",
+  "repository_domain": "github.com/example/repo",
+  "architect_runtime": {
+    "provider_id": "openai",
+    "runtime": "codex-app-server",
+    "thread_id": null,
+    "resumable": null
+  },
+  "assurance_mode": "manual",
+  "governing_snapshot": {
+    "repository_domain": "github.com/example/repo",
+    "revision": null,
+    "revision_status": "not_requested",
+    "tree_digest_sha256": null,
+    "graph_digest_sha256": null,
+    "graph_digest_status": "unknown"
+  },
+  "admission_reference": null,
+  "lifecycle_state": "created",
+  "created_at": "2026-07-25T00:00:00Z",
+  "updated_at": "2026-07-25T00:00:00Z",
+  "active_context": null,
+  "continuity_refs": []
+}

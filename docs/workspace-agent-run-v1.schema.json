@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/workspace-agent-run-v1.json",
+  "title": "Sensei Dashboard Workspace Agent Run V1",
+  "description": "A Dashboard/runner-owned envelope binding one bounded worker or architect/reviewer attempt to an exact repository, revision, worktree, and role (docs/architecture-workspace-v1.md §12, docs/claude-workspace-o1-brief.md §3). Mutable local orchestration state -- defines no orchestration behavior, only the record shape (Law B).",
+  "$comment": "schema_version is a const. Dashboard/runner-owned per claude-workspace-o1-brief.md §11.1/§A. governing_snapshot/admission_reference mirror Sensei's real ClaimDocumentBinding/admission.Decision shapes (globulario/sensei golang/architecture/claim_document.go, golang/architecture/admission/admission.go) -- see docs/architecture-workspace-contracts-v1.md for the exact field-by-field mapping and citations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "job_id",
+    "repository_domain",
+    "governing_snapshot",
+    "expected_head_sha",
+    "worktree_id",
+    "task_ref",
+    "role",
+    "provider",
+    "assurance_mode",
+    "required_capabilities",
+    "operation_class",
+    "governing_contract_ref",
+    "admission_reference",
+    "lifecycle_state",
+    "cancellation",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "sensei.dashboard.agent-run.v1" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "job_id": { "type": "string", "minLength": 1 },
+    "repository_domain": { "type": "string", "minLength": 1 },
+    "governing_snapshot": { "$ref": "#/$defs/governingSnapshot" },
+    "expected_head_sha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+    "worktree_id": {
+      "type": ["string", "null"],
+      "$comment": "Null for a run that does not require its own worktree (e.g. a read-only architect/reviewer inspection) -- this schema never forces mutation-only fields onto a read-only run."
+    },
+    "task_ref": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "issue_ref": { "type": ["string", "null"] },
+            "pr_ref": { "type": ["string", "null"] },
+            "task_id": { "type": ["string", "null"] }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "role": { "type": "string", "enum": ["implementer", "architect", "reviewer"] },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_id", "runtime"],
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 }
+      }
+    },
+    "assurance_mode": { "$ref": "#/$defs/assuranceMode" },
+    "required_capabilities": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "$comment": "Capability tokens (e.g. the keys of workspace-provider-capabilities-v1's capabilities object) this run needs from its provider -- not cross-validated against that schema here (this family avoids cross-file $ref by design, see docs/architecture-workspace-contracts-v1.md)."
+    },
+    "operation_class": { "type": "string", "enum": ["read_only", "mutation"] },
+    "governing_contract_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brief_path", "accepted_sha"],
+      "properties": {
+        "brief_path": { "type": ["string", "null"] },
+        "accepted_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "admission_reference": {
+      "oneOf": [{ "$ref": "#/$defs/admissionReference" }, { "type": "null" }]
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "$comment": "queued/admitting/running/waiting_for_human are non-terminal; completed/failed/refused/cancelled are terminal.",
+      "enum": ["queued", "admitting", "running", "waiting_for_human", "completed", "failed", "refused", "cancelled"]
+    },
+    "cancellation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "at"],
+          "properties": {
+            "reason": { "$ref": "#/$defs/reason" },
+            "at": { "type": "string", "format": "date-time" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "$comment": "Law F, governed half: a governed record must bind a real admission_reference.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "governed" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "required": ["admission_reference"],
+        "properties": { "admission_reference": { "$ref": "#/$defs/admissionReference" } }
+      }
+    },
+    {
+      "$comment": "Law F, manual half: a manual record must not fabricate an admission_reference -- forced null, not merely unconstrained.",
+      "if": {
+        "properties": { "assurance_mode": { "const": "manual" } },
+        "required": ["assurance_mode"]
+      },
+      "then": {
+        "properties": { "admission_reference": { "type": "null" } }
+      }
+    }
+  ],
+  "$defs": {
+    "assuranceMode": {
+      "type": "string",
+      "enum": ["manual", "governed"]
+    },
+    "governingSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_domain", "revision", "revision_status", "tree_digest_sha256", "graph_digest_sha256", "graph_digest_status"],
+      "properties": {
+        "repository_domain": { "type": "string", "minLength": 1 },
+        "revision": { "type": ["string", "null"] },
+        "revision_status": { "type": "string", "enum": ["resolved", "unavailable", "not_git", "not_requested"] },
+        "tree_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "graph_digest_status": { "type": "string", "enum": ["resolved", "unavailable", "unknown"] }
+      }
+    },
+    "admissionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["admission_id", "decision", "decision_digest_sha256", "policy_id"],
+      "properties": {
+        "admission_id": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "enum": ["admitted", "admitted_with_conditions", "waiting", "refused", "uncertifiable"] },
+        "decision_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "policy_id": { "type": ["string", "null"] }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "$comment": "Mirrors Sensei's real Reason{Code,Detail} shape (admission.go) -- an open, subsystem-scoped code string, never a Dashboard-invented closed enum (Sensei has no single cross-cutting refusal-code enum).",
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

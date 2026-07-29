@@ -32,15 +32,19 @@ The dashboard must never infer architectural meaning from raw RDF, artifact coun
 ## Contract tooling
 
 `globulario/sensei` is now the canonical producer of both schemas above
-([sensei#116](https://github.com/globulario/sensei/pull/116)). This
-repository pins the exact adopted commit, verifies digest parity against it
-in CI, imports the accepted fixtures, and generates TypeScript types from
-the pinned schemas — see [`contract/PARITY.md`](contract/PARITY.md) for the
-full handshake.
+([sensei#116](https://github.com/globulario/sensei/pull/116)), and,
+separately, of the two workspace identity/admission contracts
+(`sensei.workspace.identity.v1`, `sensei.workspace.admission.v1` —
+[sensei#121](https://github.com/globulario/sensei/pull/121)). This
+repository pins the exact adopted commit for each, verifies digest parity
+against them in CI, imports the accepted fixtures, and generates TypeScript
+types from the pinned schemas — see
+[`contract/PARITY.md`](contract/PARITY.md) for the full handshake, including
+the second, independent workspace pin manifest.
 
 ```bash
 npm ci
-npm run verify:pin      # local digests + live cross-repo parity + schema validation
+npm run verify:pin      # local digests + live cross-repo parity + schema validation, both pin manifests
 npm run generate:types  # regenerate contract/generated/*.ts
 npm test
 ```

@@ -1,5 +1,5 @@
 {
-  "$comment": "Workspace O1 contract inventory (docs/claude-workspace-o1-brief.md 'Required contract inventory'). One entry per contract in the AI Architecture Workspace extension (docs/architecture-workspace-v1.md, accepted contract head 2a019dc517f12a0984a1d2699408ce97f529a267). pinning_rule 'local' means: self-consistency (local digest) and fixture-schema validation only, no external cross-repo parity check -- see contract/pin.json's per-entry 'source' field and scripts/verify-schema-pin.mjs. pinning_rule 'pending_sensei_adoption' means: not yet canonical in globulario/sensei, so nothing is pinned yet; see docs/architecture-workspace-contracts-v1.md for the field mapping and the open ARCHITECT QUESTION.",
+  "$comment": "Workspace O1 contract inventory (docs/claude-workspace-o1-brief.md 'Required contract inventory'). One entry per contract in the AI Architecture Workspace extension (docs/architecture-workspace-v1.md, accepted contract head 2a019dc517f12a0984a1d2699408ce97f529a267). pinning_rule 'local' means: self-consistency (local digest) and fixture-schema validation only, no external cross-repo parity check -- see contract/pin.json's per-entry 'source' field and scripts/verify-schema-pin.mjs. pinning_rule 'sensei_pinned' means: canonical in globulario/sensei and pinned byte-for-byte via contract/workspace/sensei-pin.json (local digest + live cross-repo parity + schema validation, verified by npm run verify:pin) -- see docs/architecture-workspace-contracts-v1.md and contract/PARITY.md for the mechanism.",
   "contracts": [
     {
       "id": "sensei.workspace.identity.v1",
@@ -8,11 +8,11 @@
       "producer_authority": "sensei-core",
       "consumer_repositories": ["globulario/sensei-dashboard"],
       "mutability_class": "immutable-per-observation",
-      "pinning_rule": "pending_sensei_adoption",
-      "generated_type_target": null,
-      "fixture_directory": null,
-      "state": "documented_not_canonical",
-      "notes": "Field mapping researched and documented (docs/architecture-workspace-contracts-v1.md) -- no single Sensei RPC/tool returns this composed shape today; it composes GraphAuthority (proto), MetadataResponse.coverage_state, and ClaimDocumentBinding. No canonical JSON Schema exists in globulario/sensei for any of these Go/proto types. Adding one is a Sensei-core architectural decision, not a Dashboard-repo unilateral action -- see the ARCHITECT QUESTION in this PR's evidence."
+      "pinning_rule": "sensei_pinned",
+      "generated_type_target": "contract/generated/workspace-identity-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/identity",
+      "state": "implemented_and_pinned",
+      "notes": "Canonicalized in globulario/sensei by PR https://github.com/globulario/sensei/pull/121, merged as source commit 14381d5760099df5a99b9ecd3a565998a494b392 (docs/schemas/workspace/v1/workspace-identity-v1.schema.json, golang/architecture/workspacecontract). Sensei is the sole authority and producer; sensei-dashboard is a consumer only -- workspace identity is evidence, not admission, and this contract never certifies correctness or authorizes mutation."
     },
     {
       "id": "sensei.workspace.admission.v1",
@@ -21,11 +21,11 @@
       "producer_authority": "sensei-core",
       "consumer_repositories": ["globulario/sensei-dashboard"],
       "mutability_class": "immutable-per-decision",
-      "pinning_rule": "pending_sensei_adoption",
-      "generated_type_target": null,
-      "fixture_directory": null,
-      "state": "documented_not_canonical",
-      "notes": "Field mapping researched and documented (docs/architecture-workspace-contracts-v1.md) -- mirrors the real admission.Decision/admission.Verification Go structs (golang/architecture/admission/admission.go), which are local-filesystem operations with no gRPC RPC and no canonical JSON Schema today. Same blocker and same ARCHITECT QUESTION as sensei.workspace.identity.v1."
+      "pinning_rule": "sensei_pinned",
+      "generated_type_target": "contract/generated/workspace-admission-v1.ts",
+      "fixture_directory": "docs/fixtures/workspace/v1/admission",
+      "state": "implemented_and_pinned",
+      "notes": "Canonicalized in globulario/sensei by PR https://github.com/globulario/sensei/pull/121, merged as source commit 14381d5760099df5a99b9ecd3a565998a494b392 (docs/schemas/workspace/v1/workspace-admission-v1.schema.json) -- a closed external projection of the real admission.Decision/admission.Verification Go structs (golang/architecture/admission/admission.go). Sensei is the sole authority and producer; sensei-dashboard is a consumer only -- admission is permission to attempt, not correctness, and scope_only/scope_compliant never imply correctness_certified."
     },
     {
       "id": "sensei.dashboard.architect-session.v1",

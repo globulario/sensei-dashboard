@@ -68,14 +68,36 @@ export const targets = [
     outFile: "workspace-github-action-v1.ts",
     local: true,
   },
+  // Workspace O1 Sensei pin/parity closure
+  // (docs/claude-workspace-o1-sensei-pin-parity-brief.md) — Sensei-core-owned
+  // canonical contracts, pinned byte-for-byte from globulario/sensei via
+  // contract/workspace/sensei-pin.json (a second, independent producer-
+  // consumer manifest from contract/pin.json's — see that file's own
+  // $comment for why the two are never merged).
+  {
+    schemaFile: "workspace-identity-v1.schema.json",
+    rootTypeName: "SenseiWorkspaceIdentityV1",
+    outFile: "workspace-identity-v1.ts",
+    workspacePinned: true,
+  },
+  {
+    schemaFile: "workspace-admission-v1.schema.json",
+    rootTypeName: "SenseiWorkspaceAdmissionV1",
+    outFile: "workspace-admission-v1.ts",
+    workspacePinned: true,
+  },
 ];
 
-export function banner(schemaFile, { local = false } = {}) {
+export function banner(schemaFile, { local = false, workspacePinned = false } = {}) {
   const provenance = local
     ? `${schemaFile} (see contract/workspace/contracts.json for ownership —
  * this is a Dashboard/runner-owned contract, authored and versioned
  * locally, not pinned from globulario/sensei)`
-    : `the pinned canonical schema
+    : workspacePinned
+      ? `the pinned canonical schema
+ * ${schemaFile} (see contract/workspace/sensei-pin.json for the exact
+ * Sensei source commit and digest)`
+      : `the pinned canonical schema
  * ${schemaFile} (see contract/pin.json for the exact Sensei source commit
  * and digest)`;
   return `/* eslint-disable */
@@ -107,7 +129,10 @@ export async function generateAll() {
       $refOptions: { resolve: { http: false } },
     });
 
-    results.push({ outFile: target.outFile, contents: banner(target.schemaFile, { local: target.local }) + ts });
+    results.push({
+      outFile: target.outFile,
+      contents: banner(target.schemaFile, { local: target.local, workspacePinned: target.workspacePinned }) + ts,
+    });
   }
   return results;
 }

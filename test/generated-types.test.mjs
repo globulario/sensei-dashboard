@@ -48,10 +48,12 @@ test("every schema file targeted for generation is listed exactly once", () => {
   assert.deepEqual(files.sort(), [
     "agent-handoff-v1.schema.json",
     "dashboard-projection-v1.schema.json",
+    "workspace-admission-v1.schema.json",
     "workspace-agent-run-v1.schema.json",
     "workspace-architect-session-v1.schema.json",
     "workspace-execution-receipt-v1.schema.json",
     "workspace-github-action-v1.schema.json",
+    "workspace-identity-v1.schema.json",
     "workspace-provider-capabilities-v1.schema.json",
     "workspace-provider-event-v1.schema.json",
     "workspace-provider-status-v1.schema.json",

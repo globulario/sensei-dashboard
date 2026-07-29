@@ -10,7 +10,7 @@ Sensei Dashboard presents repository structure, authority, contracts, risk, evid
 
 - **Sensei core** constructs and owns architectural truth: canonical projections, assessment semantics, revision comparison, snapshots, live APIs, workspace identity, and governed admission.
 - **Sensei Dashboard** communicates that truth through a standalone web application and, in local mode, provides the human interface for architectural discussion and governed work orchestration.
-- **`sensei-runner`** is the planned local execution boundary for provider authentication, exact-SHA worktrees, Sensei MCP verification, agent execution, GitHub operations, and evidence receipts.
+- **`sensei-runner`** is the local execution boundary for provider authentication, exact-SHA worktrees, Sensei MCP verification, agent execution, GitHub operations, and evidence receipts. Phase O2.1 (`runner/`) implements only the process/authenticated-IPC foundation -- see [`runner/README.md`](runner/README.md); none of the actual orchestration capability above exists yet.
 - **The primary AI architect** explains, plans, writes contracts, prepares GitHub work, and reviews exact implementation SHAs.
 - **Worker agents** such as Claude Code, Codex, and Antigravity investigate or implement bounded admitted jobs.
 - **The human maintainer** retains final architectural decisions and merge authority.
@@ -48,6 +48,27 @@ npm run verify:pin      # local digests + live cross-repo parity + schema valida
 npm run generate:types  # regenerate contract/generated/*.ts
 npm test
 ```
+
+## Runner (Workspace O2.1 foundation)
+
+`runner/` is a separate Go module implementing the `sensei-runner`
+executable's process boundary and authenticated local IPC only -- no
+provider, worktree, Sensei, or GitHub behavior exists yet. See
+[`runner/README.md`](runner/README.md) for flags, the wire protocol, and
+explicit non-capabilities.
+
+```bash
+cd runner
+gofmt -w .
+go vet ./...
+go test ./...
+go test -race ./...
+go build ./cmd/sensei-runner
+```
+
+The static Dashboard build (`npm run build`) has no dependency on the
+runner binary, descriptor, token, or port -- it remains fully functional
+without `sensei-runner` running or even present.
 
 ## Running the application (Stage 1)
 

@@ -1,0 +1,53 @@
+name: runner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "runner/**"
+      - "docs/runner-protocol-v1.schema.json"
+      - "docs/fixtures/runner/**"
+      - "contract/runner/**"
+      - "contract/generated/runner-protocol-v1.ts"
+      - ".github/workflows/runner.yml"
+  pull_request:
+    paths:
+      - "runner/**"
+      - "docs/runner-protocol-v1.schema.json"
+      - "docs/fixtures/runner/**"
+      - "contract/runner/**"
+      - "contract/generated/runner-protocol-v1.ts"
+      - ".github/workflows/runner.yml"
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: runner/go.mod
+
+      - name: gofmt (no uncommitted formatting changes)
+        run: |
+          test -z "$(gofmt -l .)" || {
+            echo "::error::the following files are not gofmt-formatted:";
+            gofmt -l .;
+            exit 1;
+          }
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go test -race
+        run: go test -race ./...
+
+      - name: go build sensei-runner
+        run: go build ./cmd/sensei-runner

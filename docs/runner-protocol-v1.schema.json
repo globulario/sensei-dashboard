@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://globulario.github.io/sensei-dashboard/schema/runner-protocol-v1.json",
+  "title": "Sensei Runner Protocol V1",
+  "description": "The closed, versioned local IPC wire protocol for sensei-runner's authenticated loopback HTTP surface (docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md). Owned by the runner (contract/runner/contracts.json), not by Sensei core and not pinned from globulario/sensei. Five closed, mutually exclusive message shapes selected by message_kind -- not one flat object with optional fields from every shape.",
+  "$comment": "schema_version is a const. Runner-owned per docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md §4. O2.1 defines exactly handshake_request, handshake_response, runner_status, runner_event, and refusal -- no job, worktree, provider, or Sensei-admission message belongs here yet. runner/internal/protocol's Go structs are the wire truth this schema mirrors field-for-field; see runner/internal/protocol/protocol_test.go for the proof that Go's real JSON output validates against this exact schema.",
+  "oneOf": [
+    { "$ref": "#/$defs/handshakeRequest" },
+    { "$ref": "#/$defs/handshakeResponse" },
+    { "$ref": "#/$defs/runnerStatus" },
+    { "$ref": "#/$defs/runnerEvent" },
+    { "$ref": "#/$defs/refusal" }
+  ],
+  "$defs": {
+    "handshakeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_kind", "schema_version", "client_id", "client_kind", "supported_protocol_versions"],
+      "properties": {
+        "message_kind": { "const": "handshake_request" },
+        "schema_version": { "const": "sensei.runner.protocol.v1" },
+        "client_id": { "type": "string", "minLength": 1 },
+        "client_kind": {
+          "$comment": "Browser/web clients are deliberately not a member of this enum -- the webview is not an IPC client in O2.1 (brief §E).",
+          "type": "string",
+          "enum": ["dashboard_native", "test_client"]
+        },
+        "supported_protocol_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "handshakeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_kind",
+        "schema_version",
+        "selected_protocol_version",
+        "runner_instance_id",
+        "started_at",
+        "capabilities",
+        "latest_event_sequence"
+      ],
+      "properties": {
+        "message_kind": { "const": "handshake_response" },
+        "schema_version": { "const": "sensei.runner.protocol.v1" },
+        "selected_protocol_version": { "type": "string", "minLength": 1 },
+        "runner_instance_id": { "type": "string", "minLength": 1 },
+        "started_at": { "type": "string", "format": "date-time" },
+        "capabilities": {
+          "$comment": "Exactly bounded to the surfaces that exist in O2.1 (brief §4.3). Advertising worktrees, jobs, providers, execution, Sensei, GitHub, authentication flows, cancellation, receipts, or restart recovery here is an O2.2+ decision, not a value this enum silently grows to include.",
+          "type": "array",
+          "items": { "type": "string", "enum": ["runner.status", "runner.events"] },
+          "uniqueItems": true
+        },
+        "latest_event_sequence": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "runnerStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_kind",
+        "schema_version",
+        "runner_instance_id",
+        "state",
+        "started_at",
+        "pid",
+        "listen_address",
+        "latest_event_sequence",
+        "retained_event_start_sequence"
+      ],
+      "properties": {
+        "message_kind": { "const": "runner_status" },
+        "schema_version": { "const": "sensei.runner.protocol.v1" },
+        "runner_instance_id": { "type": "string", "minLength": 1 },
+        "state": {
+          "$comment": "Runner-local process truth only -- never a claim that a provider, repository, Sensei service, worktree, or job is ready (brief §4.4).",
+          "type": "string",
+          "enum": ["ready", "stopping"]
+        },
+        "started_at": { "type": "string", "format": "date-time" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "listen_address": { "type": "string", "minLength": 1 },
+        "latest_event_sequence": { "type": "integer", "minimum": 0 },
+        "retained_event_start_sequence": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "runnerEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_kind", "schema_version", "runner_instance_id", "sequence", "emitted_at", "kind", "payload"],
+      "properties": {
+        "message_kind": { "const": "runner_event" },
+        "schema_version": { "const": "sensei.runner.protocol.v1" },
+        "runner_instance_id": { "type": "string", "minLength": 1 },
+        "sequence": {
+          "$comment": "Starts at 1 for each runner instance, strictly monotonic, assigned by one owner (runner/internal/eventlog), never wall-clock-based. May reset only when runner_instance_id changes (brief §4.5).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "emitted_at": { "type": "string", "format": "date-time" },
+        "kind": { "type": "string", "enum": ["runner_started", "client_authenticated", "runner_stopping"] },
+        "payload": true
+      },
+      "oneOf": [
+        {
+          "required": ["kind", "payload"],
+          "properties": { "kind": { "const": "runner_started" }, "payload": { "$ref": "#/$defs/emptyPayload" } }
+        },
+        {
+          "required": ["kind", "payload"],
+          "properties": { "kind": { "const": "client_authenticated" }, "payload": { "$ref": "#/$defs/clientAuthenticatedPayload" } }
+        },
+        {
+          "required": ["kind", "payload"],
+          "properties": { "kind": { "const": "runner_stopping" }, "payload": { "$ref": "#/$defs/runnerStoppingPayload" } }
+        }
+      ]
+    },
+    "refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_kind", "schema_version", "code", "detail", "retryable"],
+      "properties": {
+        "message_kind": { "const": "refusal" },
+        "schema_version": { "const": "sensei.runner.protocol.v1" },
+        "code": {
+          "type": "string",
+          "enum": [
+            "runner.unauthorized",
+            "runner.browser_origin_forbidden",
+            "runner.protocol_unsupported",
+            "runner.invalid_request",
+            "runner.unknown_route",
+            "runner.event_gap",
+            "runner.stopping"
+          ]
+        },
+        "detail": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" }
+      }
+    },
+    "emptyPayload": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "clientAuthenticatedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client_id"],
+      "properties": {
+        "client_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "runnerStoppingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

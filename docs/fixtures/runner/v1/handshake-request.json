@@ -1,0 +1,7 @@
+{
+  "message_kind": "handshake_request",
+  "schema_version": "sensei.runner.protocol.v1",
+  "client_id": "test-client-1",
+  "client_kind": "test_client",
+  "supported_protocol_versions": ["1"]
+}

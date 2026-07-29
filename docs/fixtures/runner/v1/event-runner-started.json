@@ -1,0 +1,9 @@
+{
+  "message_kind": "runner_event",
+  "schema_version": "sensei.runner.protocol.v1",
+  "runner_instance_id": "runner-instance-0123456789abcdef0123456789abcdef",
+  "sequence": 1,
+  "emitted_at": "2026-07-29T13:00:00.000000000Z",
+  "kind": "runner_started",
+  "payload": {}
+}

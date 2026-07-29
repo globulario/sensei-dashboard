@@ -1,0 +1,7 @@
+{
+  "message_kind": "refusal",
+  "schema_version": "sensei.runner.protocol.v1",
+  "code": "runner.unauthorized",
+  "detail": "missing or invalid bearer credentials",
+  "retryable": false
+}

@@ -559,6 +559,8 @@ Each phase below lands through its own bounded implementer brief, following this
 
 ### Phase O1: governing contracts
 
+**Status: complete.** Dashboard PR #12, merged at exact head `d492e29de6de7590e177b2208f0dffeb74b45bf1`.
+
 - this architecture-workspace contract
 - architect/session/run/admission/receipt schemas
 - runner and provider-capability interfaces
@@ -567,11 +569,13 @@ Each phase below lands through its own bounded implementer brief, following this
 
 ### Phase O2: local runner foundation
 
-- separate `sensei-runner` process
-- authenticated local IPC
-- exact-SHA worktree manager
-- normalized event stream
-- cancellation, cleanup, and restart recovery
+**Status: O2.1 implemented (docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md, `runner/`); O2.2+ remains locked.** O2.1 delivered only the runner's process boundary and authenticated transport: a separate `sensei-runner` Go executable and module, authenticated loopback HTTP/1.1 IPC (bearer token, no CORS/Origin, no webview client), the closed `sensei.runner.protocol.v1` wire protocol with generated Dashboard consumer types, single-instance ownership with an OS-backed lock and atomic descriptor, foreground graceful lifecycle, and a bounded (256-entry) **non-durable, in-memory** sequenced event ring with explicit gap refusal. It does not yet include:
+
+- separate `sensei-runner` process — done (O2.1)
+- authenticated local IPC — done (O2.1), handshake/status/events only
+- exact-SHA worktree manager — not started (O2.3)
+- normalized event stream — not started; O2.1's event ring is a minimal internal-lifecycle stream (`runner_started`/`client_authenticated`/`runner_stopping`) only, not the provider-translated normalized run events §13 describes (O2.4)
+- cancellation, cleanup, and restart recovery — not started; O2.1 restart always starts a fresh, non-durable state (O2.2)
 
 ### Phase O3: embedded OpenAI architect
 

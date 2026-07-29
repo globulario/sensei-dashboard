@@ -1,0 +1,20 @@
+{
+  "$comment": "Workspace O2.1 runner contract inventory (docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md §4). Distinct from contract/workspace/contracts.json (Dashboard-owned workspace orchestration records) and from contract/pin.json / contract/workspace/sensei-pin.json (Sensei-core-pinned contracts) -- this schema is local runner-owned truth, authored and versioned in this repository, not pinned from globulario/sensei. Browser/webview direct access to the runner's transport is prohibited in every phase this contract covers; only a future native/Tauri client may implement the generated consumer type.",
+  "contracts": [
+    {
+      "id": "sensei.runner.protocol.v1",
+      "version": "v1",
+      "owner_repository": "globulario/sensei-dashboard",
+      "producer_authority": "sensei-runner",
+      "consumer_repositories": ["globulario/sensei-dashboard-native-client"],
+      "mutability_class": "wire-protocol",
+      "pinning_rule": "local",
+      "schema_path": "docs/runner-protocol-v1.schema.json",
+      "generated_type_target": "contract/generated/runner-protocol-v1.ts",
+      "fixture_directory": "docs/fixtures/runner/v1",
+      "transport_profile": "loopback_http_bearer_v1",
+      "state": "implemented",
+      "notes": "Authenticated HTTP/1.1 over IPv4 loopback only (127.0.0.1), bearer-token authentication via an externally supplied --auth-token-file, no CORS/Origin support. Browser/webview direct access is prohibited by design (docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md §E) -- the server refuses every request carrying an Origin header and every OPTIONS request. O2.1 defines exactly handshake, status, and a non-durable in-memory sequenced event stream; no job, worktree, provider, or Sensei-admission surface exists yet."
+    }
+  ]
+}

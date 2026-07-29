@@ -72,11 +72,41 @@ test("the two pinned canonical workspace types (root and every closed nested obj
   }
 });
 
+test("the runner protocol type (root and nested closed objects) carries no open index signature, of either 'any' or 'unknown'", async () => {
+  const fresh = await generateAll();
+  const runner = fresh.find((f) => f.outFile === "runner-protocol-v1.ts").contents;
+
+  assert.match(runner, /export type SenseiRunnerProtocolV1 = /);
+  assert.match(runner, /export interface HandshakeRequest \{/);
+  assert.match(runner, /export interface HandshakeResponse \{/);
+  assert.match(runner, /export interface RunnerStatus \{/);
+  assert.match(runner, /export type RunnerEvent = /);
+  assert.match(runner, /export interface Refusal \{/);
+
+  assert.doesNotMatch(runner, /\[k: string\]: any/, "generated types must not carry an open 'any' index signature");
+  assert.doesNotMatch(runner, /\[k: string\]: unknown/, "generated types must not carry an open 'unknown' index signature");
+});
+
+test("the runner protocol's closed empty-object payload is not the open TypeScript {} shape", async () => {
+  const fresh = await generateAll();
+  const runner = fresh.find((f) => f.outFile === "runner-protocol-v1.ts").contents;
+
+  // `export interface EmptyPayload {}` is not a closed type in
+  // TypeScript -- `{}` accepts any non-null value, including primitives
+  // and objects with undeclared properties, even though the JSON Schema
+  // (type:object, additionalProperties:false, no properties) is closed.
+  // scripts/lib/generate.mjs's closeEmptyObjectInterfaces() rewrites this
+  // to the idiomatic closed representation.
+  assert.doesNotMatch(runner, /export interface EmptyPayload \{\}/, "EmptyPayload must not be the open {} shape");
+  assert.match(runner, /export type EmptyPayload = Record<string, never>;/, "EmptyPayload must be the closed Record<string, never> representation");
+});
+
 test("every schema file targeted for generation is listed exactly once", () => {
   const files = targets.map((t) => t.schemaFile);
   assert.deepEqual(files.sort(), [
     "agent-handoff-v1.schema.json",
     "dashboard-projection-v1.schema.json",
+    "runner-protocol-v1.schema.json",
     "workspace-admission-v1.schema.json",
     "workspace-agent-run-v1.schema.json",
     "workspace-architect-session-v1.schema.json",

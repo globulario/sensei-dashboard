@@ -1,0 +1,11 @@
+{
+  "message_kind": "runner_event",
+  "schema_version": "sensei.runner.protocol.v1",
+  "runner_instance_id": "runner-instance-0123456789abcdef0123456789abcdef",
+  "sequence": 2,
+  "emitted_at": "2026-07-29T13:00:01.000000000Z",
+  "kind": "client_authenticated",
+  "payload": {
+    "client_id": "test-client-1"
+  }
+}

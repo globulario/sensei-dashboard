@@ -86,6 +86,17 @@ export const targets = [
     outFile: "workspace-admission-v1.ts",
     workspacePinned: true,
   },
+  // Workspace O2.1 runner/IPC foundation
+  // (docs/claude-workspace-o2-1-runner-ipc-foundation-brief.md) — runner-owned
+  // local wire protocol (contract/runner/contracts.json), not sourced from
+  // globulario/sensei. Root-level oneOf, not allOf, so this target does not
+  // need the workspacePinned closedness workaround above.
+  {
+    schemaFile: "runner-protocol-v1.schema.json",
+    rootTypeName: "SenseiRunnerProtocolV1",
+    outFile: "runner-protocol-v1.ts",
+    local: true,
+  },
 ];
 
 export function banner(schemaFile, { local = false, workspacePinned = false } = {}) {

@@ -1,0 +1,7 @@
+{
+  "message_kind": "refusal",
+  "schema_version": "sensei.runner.protocol.v1",
+  "code": "runner.event_gap",
+  "detail": "requested sequence is older than the retained event window",
+  "retryable": false
+}

@@ -1,0 +1,11 @@
+{
+  "message_kind": "runner_status",
+  "schema_version": "sensei.runner.protocol.v1",
+  "runner_instance_id": "runner-instance-0123456789abcdef0123456789abcdef",
+  "state": "stopping",
+  "started_at": "2026-07-29T13:00:00.000000000Z",
+  "pid": 4242,
+  "listen_address": "127.0.0.1:54321",
+  "latest_event_sequence": 4,
+  "retained_event_start_sequence": 1
+}

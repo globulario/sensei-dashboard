@@ -1,13 +1,21 @@
 package config
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
 
 func TestValidateLoopbackAddress(t *testing.T) {
+	// IP-literal cases only: these are deterministic in every test
+	// environment. "localhost" is deliberately NOT included here -- its
+	// validity depends on how the current environment's resolver answers
+	// it (see TestValidateLoopbackAddress_LocalhostMatchesActualResolution
+	// below), which differs between a typical dev machine (often IPv4-only)
+	// and a CI runner (commonly both 127.0.0.1 and ::1).
 	valid := []string{
 		"127.0.0.1:0",
 		"127.0.0.1:8080",
 		"127.5.5.5:1234",
-		"localhost:0",
 	}
 	for _, addr := range valid {
 		t.Run("valid/"+addr, func(t *testing.T) {
@@ -32,6 +40,37 @@ func TestValidateLoopbackAddress(t *testing.T) {
 				t.Fatalf("expected %q to be refused", addr)
 			}
 		})
+	}
+}
+
+// TestValidateLoopbackAddress_LocalhostMatchesActualResolution proves the
+// "hostname whose resolution is ambiguous" rule (brief §C) against
+// whatever this environment's real resolver returns for "localhost",
+// rather than assuming a fixed answer: a dev machine that resolves
+// "localhost" to 127.0.0.1 only must accept it; a CI runner that also
+// resolves it to ::1 must refuse it, since net.Listen("tcp",
+// "localhost:0") could then silently bind IPv6 instead of the required
+// IPv4-only loopback.
+func TestValidateLoopbackAddress_LocalhostMatchesActualResolution(t *testing.T) {
+	addrs, err := net.LookupHost("localhost")
+	if err != nil {
+		t.Skipf("cannot resolve localhost in this environment: %v", err)
+	}
+
+	allIPv4Loopback := true
+	for _, a := range addrs {
+		ip := net.ParseIP(a)
+		if ip == nil || !ip.IsLoopback() || ip.To4() == nil {
+			allIPv4Loopback = false
+		}
+	}
+
+	err = ValidateLoopbackAddress("localhost:0")
+	if allIPv4Loopback && err != nil {
+		t.Fatalf("localhost resolves to IPv4 loopback only (%v) but was refused: %v", addrs, err)
+	}
+	if !allIPv4Loopback && err == nil {
+		t.Fatalf("localhost resolution %v is not exclusively IPv4 loopback but was accepted", addrs)
 	}
 }
 

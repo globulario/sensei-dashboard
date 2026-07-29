@@ -1,6 +1,13 @@
 // Shared helpers for contract/pin.json consumers: the CLI verifier
 // (scripts/verify-schema-pin.mjs) and the test suite (test/*.test.mjs) both
 // import from here so the two never drift into checking different things.
+//
+// These helpers are also reused, unchanged, by contract/workspace/sensei-pin.json
+// (a second, independent producer-consumer pin manifest -- see
+// docs/claude-workspace-o1-sensei-pin-parity-brief.md Law C). Nothing here is
+// specific to contract/pin.json's particular source_commit or entries; the
+// generic manifest shape ({ source_repository, source_commit, schemas[],
+// fixtures[] }) is shared, not the manifest's content.
 
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -11,9 +18,18 @@ import addFormats from "ajv-formats";
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-export async function loadPin() {
-  const raw = await readFile(path.join(repoRoot, "contract", "pin.json"), "utf8");
+/** Generic pin-manifest loader: relativePath is repo-root-relative, e.g. "contract/pin.json". */
+export async function loadManifest(relativePath) {
+  const raw = await readFile(path.join(repoRoot, relativePath), "utf8");
   return JSON.parse(raw);
+}
+
+export async function loadPin() {
+  return loadManifest(path.join("contract", "pin.json"));
+}
+
+export async function loadWorkspacePin() {
+  return loadManifest(path.join("contract", "workspace", "sensei-pin.json"));
 }
 
 export async function sha256File(relativeOrAbsolutePath) {
@@ -63,4 +79,26 @@ export async function buildValidators() {
   const validateHandoff = ajv.compile(handoffSchema);
 
   return { ajv, projectionSchema, handoffSchema, validateProjection, validateHandoff };
+}
+
+/**
+ * Generic Ajv2020 validator compiler for a set of independent schema files
+ * that do not cross-reference each other or need the dashboard-projection/
+ * agent-handoff $ref-alias workaround above. Used for the pinned workspace
+ * schemas (sensei.workspace.identity.v1, sensei.workspace.admission.v1),
+ * which are self-contained per docs/schemas/workspace/v1/*.schema.json.
+ * Returns { schemasByFile, validatorsByFile }, both keyed by filename.
+ */
+export async function buildSimpleValidators(dir, fileNames) {
+  const ajv = new Ajv2020({ allErrors: true, strict: true, allowUnionTypes: true });
+  addFormats(ajv);
+
+  const schemasByFile = {};
+  const validatorsByFile = {};
+  for (const file of fileNames) {
+    const schema = JSON.parse(await readFile(path.join(dir, file), "utf8"));
+    schemasByFile[file] = schema;
+    validatorsByFile[file] = ajv.compile(schema);
+  }
+  return { schemasByFile, validatorsByFile };
 }

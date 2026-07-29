@@ -1,0 +1,85 @@
+{
+  "$comment": "Producer-consumer parity pin for the two Sensei-core-owned workspace contracts (sensei.workspace.identity.v1, sensei.workspace.admission.v1). Generated and verified by scripts/verify-schema-pin.mjs (npm run verify:pin) via the same shared helpers contract/pin.json uses (scripts/lib/pin.mjs), but this is a separate, independently pinned manifest -- adopting these contracts must never repoint or otherwise alter contract/pin.json's existing source_commit (docs/claude-workspace-o1-sensei-pin-parity-brief.md Law C). Do not hand-edit digests -- update source_commit, re-run the verifier against the new commit once it is itself accepted, and let it recompute this file, or update by hand only alongside a matching source_commit bump reviewed the same way the schema adoption itself is reviewed.",
+  "source_repository": "globulario/sensei",
+  "source_commit": "14381d5760099df5a99b9ecd3a565998a494b392",
+  "source_pr": "https://github.com/globulario/sensei/pull/121",
+  "schemas": [
+    {
+      "schema_version": "sensei.workspace.identity.v1",
+      "source_path": "docs/schemas/workspace/v1/workspace-identity-v1.schema.json",
+      "mirror_path": "docs/workspace-identity-v1.schema.json",
+      "sha256": "72201049c35f934ec93b7b3db1a56e61768449841ab4931d225826212a9fad14"
+    },
+    {
+      "schema_version": "sensei.workspace.admission.v1",
+      "source_path": "docs/schemas/workspace/v1/workspace-admission-v1.schema.json",
+      "mirror_path": "docs/workspace-admission-v1.schema.json",
+      "sha256": "ba11e9797e7663f54bf84bde57fbe9bf287d44fec2c2fd14e5cc0ddc79e6622f"
+    }
+  ],
+  "fixtures": [
+    {
+      "source_path": "docs/fixtures/workspace/v1/identity/complete.json",
+      "mirror_path": "docs/fixtures/workspace/v1/identity/complete.json",
+      "sha256": "d2fa992652824c1ef91e1ee1b5ea28ecd6e1a882211fbd46f88f88516c4c7313",
+      "schema_version": "sensei.workspace.identity.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/identity/partial.json",
+      "mirror_path": "docs/fixtures/workspace/v1/identity/partial.json",
+      "sha256": "360737eed2cadd1506112db3fa6d5ae28e1198bbf9e52e5093feffaeef4671b0",
+      "schema_version": "sensei.workspace.identity.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/identity/unavailable.json",
+      "mirror_path": "docs/fixtures/workspace/v1/identity/unavailable.json",
+      "sha256": "c14c08602b23e9e86f0d880d2bb7277a605d47faab063dad7fa6939129bdcb92",
+      "schema_version": "sensei.workspace.identity.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/admitted.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/admitted.json",
+      "sha256": "b76b663eca61a53650b767d32ca3c6063146243baebed770ce2678232bead657",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/admitted-with-conditions.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/admitted-with-conditions.json",
+      "sha256": "dd3b1927e1613283a7c4f4106f4fc1e0fc673d23619da0873dd441018dfadb94",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/refused.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/refused.json",
+      "sha256": "05d5d9b886a7b012ab10cc98d67981e683a48861f60ba1f19de4b9aae04acd9a",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/verification-compliant.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/verification-compliant.json",
+      "sha256": "7c8e17b6c48e08efbbd692d06e0b4e764e6c1f8aff05af90b2a32e9bc213d988",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/verification-stale.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/verification-stale.json",
+      "sha256": "0d9847c66b4c0cc16408199d875131e411e5c21475f0ddc48aea31b73d01723c",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    },
+    {
+      "source_path": "docs/fixtures/workspace/v1/admission/verification-violated.json",
+      "mirror_path": "docs/fixtures/workspace/v1/admission/verification-violated.json",
+      "sha256": "362e2c42b5c7bda11304a44d3246966ecdc7bbbc528f0cdf06779b15325cdf55",
+      "schema_version": "sensei.workspace.admission.v1",
+      "expect": "valid"
+    }
+  ]
+}

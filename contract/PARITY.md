@@ -103,3 +103,43 @@ any frontend-invented semantics.
    `contract/generated/*.ts`.
 5. Run `npm run verify:pin` and `npm test` — both must pass before opening
    a PR for the pin update itself.
+
+## A second, independent pin: the workspace contracts
+
+`globulario/sensei` is also the canonical **producer** of two more
+contracts, `sensei.workspace.identity.v1` and `sensei.workspace.admission.v1`
+(adopted in [sensei#121](https://github.com/globulario/sensei/pull/121),
+commit `14381d5760099df5a99b9ecd3a565998a494b392`) — see
+`docs/claude-workspace-o1-sensei-pin-parity-brief.md`. These are pinned via a
+**separate** manifest, `contract/workspace/sensei-pin.json`, not by adding
+entries to `contract/pin.json` above: the two adoptions are independent
+Sensei PRs at independent source commits, and adopting one must never
+repoint or otherwise alter the other's recorded `source_commit`.
+
+| What | Where | Source of truth |
+|---|---|---|
+| Identity schema | `docs/workspace-identity-v1.schema.json` | mirrored byte-for-byte from `sensei`'s `docs/schemas/workspace/v1/workspace-identity-v1.schema.json` |
+| Admission schema | `docs/workspace-admission-v1.schema.json` | mirrored byte-for-byte from `sensei`'s `docs/schemas/workspace/v1/workspace-admission-v1.schema.json` |
+| Exact source commit + every digest | `contract/workspace/sensei-pin.json` | authored here, verified against both the local files and the live commit in `sensei` |
+| Nine accepted fixtures | `docs/fixtures/workspace/v1/{identity,admission}/*.json` | mirrored byte-for-byte from the same `sensei` commit |
+| Generated TypeScript types | `contract/generated/workspace-identity-v1.ts`, `contract/generated/workspace-admission-v1.ts` | derived from the two schema files above; never hand-edited |
+
+`npm run verify:pin` runs the same three checks (local digest, live
+cross-repo parity, fixture schema validation) against **both** manifests in
+one command — `scripts/lib/pin.mjs`'s `loadManifest`/`allPinEntries`/
+`sha256File`/`sha256Bytes`/`fetchRaw`/`buildSimpleValidators` are shared,
+generic helpers reused as-is for this manifest, not a copy of the logic
+above. See `test/workspace-pin.test.mjs` for the equivalent of
+`test/pin.test.mjs` for this manifest — its completeness assertions are
+always derived from the manifest's own `schemas.length + fixtures.length`,
+never a hard-coded total.
+
+These two contracts are Sensei-core truth, not Dashboard-authored
+approximations: workspace identity is evidence, not permission to mutate;
+admission is permission to attempt, not correctness; scope compliance is
+not correctness certification. `src/workspace/interfaces/
+workspace-admission-client.ts` consumes the generated canonical types
+(`SenseiWorkspaceIdentityV1`, `SenseiWorkspaceAdmissionV1`) directly as its
+authoritative return values — see
+`docs/architecture-workspace-contracts-v1.md` for the full ownership
+picture and the reasoning behind that interface's shape.

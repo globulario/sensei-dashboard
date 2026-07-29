@@ -43,15 +43,46 @@ test("generated root types exist for both schemas and stay closed (no index sign
   }
 });
 
+test("the two pinned canonical workspace types (root and every closed nested object) carry no open index signature, of either 'any' or 'unknown'", async () => {
+  const fresh = await generateAll();
+  const identity = fresh.find((f) => f.outFile === "workspace-identity-v1.ts").contents;
+  const admission = fresh.find((f) => f.outFile === "workspace-admission-v1.ts").contents;
+
+  assert.match(identity, /export interface SenseiWorkspaceIdentityV1 \{/);
+  assert.match(admission, /export type SenseiWorkspaceAdmissionV1 = \{/);
+
+  // These are the exact two nested $defs-derived types
+  // workspace-identity-v1.schema.json's `binding`/`taskIdentity` compile
+  // to (both use allOf for Law F if/then conditionals, which is what
+  // triggers json-schema-to-typescript's open-signature fallback --
+  // see scripts/lib/generate.mjs's closeKnownClosedIntersections()).
+  assert.match(identity, /export type Binding = \{/);
+  assert.match(identity, /export type TaskIdentity = \{/);
+
+  // json-schema-to-typescript's own open-signature fallback for allOf-
+  // merged closed objects emits `unknown` (see
+  // scripts/lib/generate.mjs's assertNoUnexpectedOpenObjects/
+  // closeKnownClosedIntersections doc comment) -- checking only `any`,
+  // as the pre-existing dashboard-projection/agent-handoff test above
+  // does, would silently miss it, which is exactly what slipped through
+  // architect review the first time.
+  for (const src of [identity, admission]) {
+    assert.doesNotMatch(src, /\[k: string\]: any/, "generated types must not carry an open 'any' index signature");
+    assert.doesNotMatch(src, /\[k: string\]: unknown/, "generated types must not carry an open 'unknown' index signature");
+  }
+});
+
 test("every schema file targeted for generation is listed exactly once", () => {
   const files = targets.map((t) => t.schemaFile);
   assert.deepEqual(files.sort(), [
     "agent-handoff-v1.schema.json",
     "dashboard-projection-v1.schema.json",
+    "workspace-admission-v1.schema.json",
     "workspace-agent-run-v1.schema.json",
     "workspace-architect-session-v1.schema.json",
     "workspace-execution-receipt-v1.schema.json",
     "workspace-github-action-v1.schema.json",
+    "workspace-identity-v1.schema.json",
     "workspace-provider-capabilities-v1.schema.json",
     "workspace-provider-event-v1.schema.json",
     "workspace-provider-status-v1.schema.json",

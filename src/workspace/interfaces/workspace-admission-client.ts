@@ -17,32 +17,44 @@ import type { SenseiWorkspaceIdentityV1 } from "../../../contract/generated/work
 import type { SenseiWorkspaceAdmissionV1 } from "../../../contract/generated/workspace-admission-v1.js";
 
 /**
+ * Mirrors the real MCP tool's "task" argument exactly: the key is either
+ * entirely absent (not_requested) or present as a string, "" meaning the
+ * active task (globulario/sensei cmd/awareness-mcp/workspace_tools.go
+ * callWorkspaceStatus's taskProvided/task pair). A discriminated union
+ * makes the two impossible combinations -- a task string paired with
+ * "not requested", or "requested" with no task string -- unrepresentable,
+ * rather than merely undocumented on two independent nullable/boolean
+ * fields.
+ */
+export type WorkspaceTaskRequest = { readonly requested: false } | { readonly requested: true; readonly task: string };
+
+/**
  * Mirrors sensei_workspace_status's real MCP tool arguments exactly
- * (globulario/sensei cmd/awareness-mcp/workspace_tools.go
- * callWorkspaceStatus). taskRequested/task are independent: the real tool
- * distinguishes an absent "task" key (not_requested) from a present one
- * (resolved/unavailable, "" meaning the active task) -- collapsing these
- * into one optional field would silently turn an absent request into an
- * implicit active-task lookup, which the producer itself never does.
+ * (callWorkspaceStatus).
  */
 export interface WorkspaceStatusRequest {
   readonly repositoryPath: string;
-  readonly taskRequested: boolean;
-  readonly task: string | null;
+  readonly task: WorkspaceTaskRequest;
 }
 
 /**
  * Mirrors sensei_workspace_admit_change's real MCP tool arguments exactly
- * (callWorkspaceAdmitChange). Every field is a local filesystem path or
- * policy identifier this interface never resolves, reads, or writes
- * itself -- admission.Evaluate is the sole evaluator (Law A).
+ * (callWorkspaceAdmitChange). Every path/identifier field is a local
+ * filesystem path or policy identifier this interface never resolves,
+ * reads, or writes itself -- admission.Evaluate is the sole evaluator
+ * (Law A). The real tool's "policy" argument is always a present string
+ * key ("" meaning no policy) -- never an absent key -- so policyId is a
+ * plain required string, not a nullable/optional field that would need an
+ * unstated null-to-omitted-argument conversion at this boundary. Any
+ * camelCase-to-wire-argument transport adaptation belongs to a future O2
+ * implementation of this interface, not to this request type.
  */
 export interface AdmitChangeRequest {
   readonly bundleDir: string;
   readonly requestPath: string;
   readonly graphNT: string;
   readonly repositoryPath: string;
-  readonly policyId: string | null;
+  readonly policyId: string;
 }
 
 /**

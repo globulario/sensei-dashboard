@@ -171,6 +171,52 @@ test("admission verification records carry non-null verification bound to the sa
   }
 });
 
+test("unknown properties are rejected on nested closed objects, not just at the fixture root", async () => {
+  const pin = await loadWorkspacePin();
+  const { validatorsByFile } = await buildSimpleValidators(
+    path.join(repoRoot, "docs"),
+    pin.schemas.map((s) => path.basename(s.mirror_path))
+  );
+  const identityValidate = validatorsByFile["workspace-identity-v1.schema.json"];
+  const admissionValidate = validatorsByFile["workspace-admission-v1.schema.json"];
+
+  const identity = JSON.parse(await readFile(path.join(repoRoot, "docs", "fixtures", "workspace", "v1", "identity", "complete.json"), "utf8"));
+  assert.equal(identityValidate(identity), true, "the base identity fixture must itself be valid before tampering it");
+  assert.ok(identity.graph_authority, "complete.json must carry a non-null graph_authority to exercise its nested closedness");
+
+  for (const nestedField of ["binding", "task_identity", "graph_authority"]) {
+    const tampered = { ...identity, [nestedField]: { ...identity[nestedField], unexpected_nested_field: "x" } };
+    assert.equal(
+      identityValidate(tampered),
+      false,
+      `workspace-identity-v1: an unknown property nested inside "${nestedField}" must be rejected (additionalProperties: false), not just at the document root`
+    );
+  }
+
+  const admission = JSON.parse(await readFile(path.join(repoRoot, "docs", "fixtures", "workspace", "v1", "admission", "admitted.json"), "utf8"));
+  assert.equal(admissionValidate(admission), true, "the base admission fixture must itself be valid before tampering it");
+  for (const nestedField of ["binding", "session_receipt", "request_receipt", "envelope"]) {
+    const tampered = { ...admission, [nestedField]: { ...admission[nestedField], unexpected_nested_field: "x" } };
+    assert.equal(
+      admissionValidate(tampered),
+      false,
+      `workspace-admission-v1: an unknown property nested inside "${nestedField}" must be rejected (additionalProperties: false), not just at the document root`
+    );
+  }
+
+  const verification = JSON.parse(
+    await readFile(path.join(repoRoot, "docs", "fixtures", "workspace", "v1", "admission", "verification-compliant.json"), "utf8")
+  );
+  assert.equal(admissionValidate(verification), true, "the base verification fixture must itself be valid before tampering it");
+  assert.ok(verification.verification, "verification-compliant.json must carry a non-null verification to exercise its nested closedness");
+  const tamperedVerification = { ...verification, verification: { ...verification.verification, unexpected_nested_field: "x" } };
+  assert.equal(
+    admissionValidate(tamperedVerification),
+    false,
+    'workspace-admission-v1: an unknown property nested inside "verification" must be rejected (additionalProperties: false), not just at the document root'
+  );
+});
+
 test("scope_compliant verification never manufactures correctness_certified: true (scope compliance is not correctness certification)", async () => {
   const rec = await loadAdmissionFixture("verification-compliant.json");
   assert.equal(rec.verification.status, "scope_compliant");

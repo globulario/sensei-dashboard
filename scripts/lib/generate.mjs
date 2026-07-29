@@ -111,6 +111,49 @@ export function banner(schemaFile, { local = false, workspacePinned = false } = 
 `;
 }
 
+/**
+ * json-schema-to-typescript (pinned at 15.0.4, the current latest) has a
+ * known limitation: when an object schema combines `allOf` (used here for
+ * Law F if/then conditionals, e.g. binding.graph_digest_status gating
+ * graph_digest_sha256) with `additionalProperties: false`, the compiler
+ * cannot prove closedness through the allOf merge and emits a fallback
+ * open `{ [k: string]: unknown } & {...}` intersection on the affected
+ * type — both the root type (when the allOf sits at the schema's own top
+ * level, e.g. workspace-admission-v1's decision/verification gating) and
+ * any $defs-referenced nested type with its own allOf (e.g.
+ * workspace-identity-v1's `binding`, `taskIdentity`). Silently accepting
+ * that signature would let Dashboard code add fields the canonical pinned
+ * schema forbids — exactly what pinning exists to prevent (Law A).
+ *
+ * assertNoUnexpectedOpenObjects() independently re-derives, from the
+ * parsed schema itself (not by assumption), that every object in scope
+ * really is additionalProperties:false; only then does
+ * closeKnownClosedIntersections() strip the fallback signature. Both run
+ * deterministically inside the same generation pipeline — this is not a
+ * schema edit (the pinned schema bytes are never touched) and not a
+ * hand-edit of the generated file (nothing here is specific to one
+ * generation's output; every regeneration re-derives and re-strips the
+ * same way). If a future pinned schema version ever contains a genuinely
+ * open object, the assertion throws instead of silently over-closing it.
+ */
+function assertNoUnexpectedOpenObjects(schema, schemaFile) {
+  const checkClosed = (node, path) => {
+    if ((node.type === "object" || node.properties) && node.additionalProperties !== false) {
+      throw new Error(
+        `generate.mjs: ${schemaFile}${path} is an object without additionalProperties:false — the open-intersection strip in generate.mjs is no longer provably safe for this schema and must be revisited`
+      );
+    }
+  };
+  checkClosed(schema, "#");
+  for (const [name, def] of Object.entries(schema.$defs ?? {})) {
+    checkClosed(def, `#/$defs/${name}`);
+  }
+}
+
+function closeKnownClosedIntersections(ts) {
+  return ts.replace(/\{\s*\[k: string\]: unknown;\s*\}\s*&\s*/g, "");
+}
+
 /** Returns { outFile, contents } for every target, without writing anything. */
 export async function generateAll() {
   const results = [];
@@ -118,7 +161,7 @@ export async function generateAll() {
     const schemaPath = path.join(docsDir, target.schemaFile);
     const schema = JSON.parse(await readFile(schemaPath, "utf8"));
 
-    const ts = await compile(schema, target.rootTypeName, {
+    let ts = await compile(schema, target.rootTypeName, {
       cwd: docsDir,
       bannerComment: "",
       declareExternallyReferenced: true,
@@ -128,6 +171,11 @@ export async function generateAll() {
       unreachableDefinitions: true,
       $refOptions: { resolve: { http: false } },
     });
+
+    if (target.workspacePinned) {
+      assertNoUnexpectedOpenObjects(schema, target.schemaFile);
+      ts = closeKnownClosedIntersections(ts);
+    }
 
     results.push({
       outFile: target.outFile,

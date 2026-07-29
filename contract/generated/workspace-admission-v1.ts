@@ -12,8 +12,6 @@
  * A closed, versioned external projection of Sensei's existing local admission.Decision and admission.Verification owners. Does not redefine admission: permission to attempt is not correctness, and scope compliance is not correctness certification.
  */
 export type SenseiWorkspaceAdmissionV1 = {
-  [k: string]: unknown;
-} & {
   schema_version: "sensei.workspace.admission.v1";
   record_kind: "decision" | "verification";
   admission_id: string;

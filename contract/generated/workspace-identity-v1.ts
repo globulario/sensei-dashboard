@@ -13,8 +13,6 @@
  * via the `definition` "binding".
  */
 export type Binding = {
-  [k: string]: unknown;
-} & {
   repository_domain: string;
   revision: string | null;
   revision_status: "resolved" | "unavailable" | "not_git" | "not_requested";
@@ -32,8 +30,6 @@ export type Sha256Hex = string;
  * via the `definition` "taskIdentity".
  */
 export type TaskIdentity = {
-  [k: string]: unknown;
-} & {
   state: "not_requested" | "resolved" | "unavailable";
   task_id: string | null;
 };

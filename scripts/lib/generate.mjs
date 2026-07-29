@@ -96,6 +96,7 @@ export const targets = [
     rootTypeName: "SenseiRunnerProtocolV1",
     outFile: "runner-protocol-v1.ts",
     local: true,
+    closeEmptyObjectInterfaces: true,
   },
 ];
 
@@ -165,6 +166,38 @@ function closeKnownClosedIntersections(ts) {
   return ts.replace(/\{\s*\[k: string\]: unknown;\s*\}\s*&\s*/g, "");
 }
 
+/**
+ * json-schema-to-typescript compiles a closed, property-less object
+ * schema ({type:"object", additionalProperties:false}, no properties, no
+ * required) to `export interface X {}`. In TypeScript, `{}` is not a
+ * closed empty-object type: it accepts any non-null value (including
+ * primitives) and does not reject an object literal with undeclared
+ * properties. This is not a faithful transcription of the schema's
+ * closedness.
+ *
+ * closeEmptyObjectInterfaces() independently re-confirms, from the parsed
+ * schema itself, that at least one $defs entry really is such a
+ * closed/property-less object, then rewrites every literal `export
+ * interface X {}` in the compiled output to the idiomatic closed
+ * empty-object type `export type X = Record<string, never>;`. This
+ * compiler only ever emits the bare `{}` shape for a provably closed,
+ * property-less object (an open one gets an index signature instead), so
+ * the textual rewrite is safe wherever it matches -- this is not a
+ * schema edit and not a hand-edit of one generation's output; it runs
+ * deterministically on every regeneration.
+ */
+function closeEmptyObjectInterfaces(schema, ts) {
+  const hasClosedEmptyObjectDef = Object.values(schema.$defs ?? {}).some(
+    (def) =>
+      def.type === "object" &&
+      def.additionalProperties === false &&
+      (def.properties === undefined || Object.keys(def.properties).length === 0) &&
+      (def.required === undefined || def.required.length === 0)
+  );
+  if (!hasClosedEmptyObjectDef) return ts;
+  return ts.replace(/export interface (\w+) \{\}/g, "export type $1 = Record<string, never>;");
+}
+
 /** Returns { outFile, contents } for every target, without writing anything. */
 export async function generateAll() {
   const results = [];
@@ -186,6 +219,9 @@ export async function generateAll() {
     if (target.workspacePinned) {
       assertNoUnexpectedOpenObjects(schema, target.schemaFile);
       ts = closeKnownClosedIntersections(ts);
+    }
+    if (target.closeEmptyObjectInterfaces) {
+      ts = closeEmptyObjectInterfaces(schema, ts);
     }
 
     results.push({

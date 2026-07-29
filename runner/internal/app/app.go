@@ -160,25 +160,34 @@ func Run(ctx context.Context, opts Options) error {
 	// Graceful shutdown sequence (brief §F): stopping state -> final
 	// event -> stop accepting -> bounded drain -> close streams ->
 	// remove descriptor -> release lock -> exit.
+	//
+	// Handlers also independently refuse new handshakes/event
+	// subscriptions once state is "stopping" (runner.stopping / 503) --
+	// defense in depth for a request that arrives on an already-
+	// established keep-alive connection in the brief window before
+	// Shutdown finishes closing the listener.
 	state.store(protocol.RunnerStateStopping)
 	_, _ = events.Publish(protocol.EventKindRunnerStopping, protocol.RunnerStoppingPayload{Reason: "runner is shutting down"})
-
-	// Let an already-open event stream flush the event just published
-	// before anything is force-closed.
-	time.Sleep(streamFlushGrace)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), GracefulDrainInterval)
 	defer cancel()
 
+	// Shutdown's first synchronous action is closing the listener(s), so
+	// starting it here -- immediately after publishing the final event,
+	// with no sleep beforehand -- is what actually stops new accepts at
+	// this step, not merely at the end of a prior pause.
 	shutdownDone := make(chan struct{})
 	go func() {
 		_ = httpServer.Shutdown(shutdownCtx) // stops accepting new requests immediately; waits for connections to go idle
 		close(shutdownDone)
 	}()
 
+	// Let an already-open event stream flush the runner_stopping event
+	// just published before anything is force-closed. This pause runs
+	// concurrently with Shutdown's own wait, not before it starts.
 	select {
+	case <-time.After(streamFlushGrace):
 	case <-shutdownDone:
-	case <-shutdownCtx.Done():
 	}
 	// http.Server.Shutdown does not force-close a still-active long-lived
 	// handler (e.g. an open NDJSON stream) merely because its own

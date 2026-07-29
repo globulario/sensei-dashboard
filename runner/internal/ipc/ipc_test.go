@@ -27,6 +27,10 @@ type testServer struct {
 }
 
 func newTestServer(t *testing.T) *testServer {
+	return newTestServerWithState(t, protocol.RunnerStateReady)
+}
+
+func newTestServerWithState(t *testing.T, state protocol.RunnerState) *testServer {
 	t.Helper()
 	dir := t.TempDir()
 	p := filepath.Join(dir, "token")
@@ -47,7 +51,7 @@ func newTestServer(t *testing.T) *testServer {
 		StartedAt:     "2026-07-29T13:00:00Z",
 		PID:           4242,
 		ListenAddress: func() string { return listenAddr },
-		State:         func() protocol.RunnerState { return protocol.RunnerStateReady },
+		State:         func() protocol.RunnerState { return state },
 	})
 	srv := httptest.NewServer(handler)
 	listenAddr = srv.Listener.Addr().String()
@@ -112,6 +116,81 @@ func TestHandshake_Success(t *testing.T) {
 	}
 	if len(got.Capabilities) != 2 {
 		t.Fatalf("expected exactly 2 capabilities, got %v", got.Capabilities)
+	}
+}
+
+func TestHandshake_EmitsClientAuthenticatedEvent(t *testing.T) {
+	s := newTestServer(t)
+	resp := s.do(t, http.MethodPost, "/v1/handshake", testTokenValue, handshakeBody())
+	defer resp.Body.Close()
+
+	var hresp protocol.HandshakeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&hresp); err != nil {
+		t.Fatal(err)
+	}
+	if hresp.LatestEventSequence < 1 {
+		t.Fatalf("expected latest_event_sequence to include the just-published client_authenticated event, got %d", hresp.LatestEventSequence)
+	}
+
+	events, gap := s.events.Since(0)
+	if gap {
+		t.Fatal("unexpected gap")
+	}
+	var found bool
+	for _, ev := range events {
+		if ev.Kind != protocol.EventKindClientAuthenticated {
+			continue
+		}
+		var payload protocol.ClientAuthenticatedPayload
+		if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.ClientID == "test-client" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected a client_authenticated event bound to the handshake's client_id in the ring")
+	}
+}
+
+func TestHandshake_RefusedWhileStopping(t *testing.T) {
+	s := newTestServerWithState(t, protocol.RunnerStateStopping)
+	resp := s.do(t, http.MethodPost, "/v1/handshake", testTokenValue, handshakeBody())
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", resp.StatusCode)
+	}
+	if refusal := decodeRefusal(t, resp); refusal.Code != protocol.RefusalStopping {
+		t.Fatalf("expected %s, got %s", protocol.RefusalStopping, refusal.Code)
+	}
+}
+
+func TestEvents_NewSubscriptionRefusedWhileStopping(t *testing.T) {
+	s := newTestServerWithState(t, protocol.RunnerStateStopping)
+	resp := s.do(t, http.MethodGet, "/v1/events", testTokenValue, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", resp.StatusCode)
+	}
+	if refusal := decodeRefusal(t, resp); refusal.Code != protocol.RefusalStopping {
+		t.Fatalf("expected %s, got %s", protocol.RefusalStopping, refusal.Code)
+	}
+}
+
+func TestStatus_StillServedWhileStopping(t *testing.T) {
+	s := newTestServerWithState(t, protocol.RunnerStateStopping)
+	resp := s.do(t, http.MethodGet, "/v1/status", testTokenValue, nil)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status must remain observable while stopping, got %d", resp.StatusCode)
+	}
+	var status protocol.RunnerStatus
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status.State != protocol.RunnerStateStopping {
+		t.Fatalf("expected status to report stopping, got %s", status.State)
 	}
 }
 

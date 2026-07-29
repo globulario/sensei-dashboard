@@ -65,7 +65,7 @@ export interface RunnerStatus {
   latest_event_sequence: number;
   retained_event_start_sequence: number;
 }
-export interface EmptyPayload {}
+export type EmptyPayload = Record<string, never>;
 export interface ClientAuthenticatedPayload {
   client_id: string;
 }

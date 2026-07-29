@@ -14,6 +14,10 @@ func (s *server) handleHandshake(w http.ResponseWriter, r *http.Request) {
 		writeRefusal(w, protocol.NewRefusal(protocol.RefusalUnknownRoute, "POST /v1/handshake only", false))
 		return
 	}
+	if s.State() == protocol.RunnerStateStopping {
+		writeRefusal(w, protocol.NewRefusal(protocol.RefusalStopping, "the runner is stopping and is not accepting new handshakes", true))
+		return
+	}
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		writeRefusal(w, protocol.NewRefusal(protocol.RefusalInvalidRequest, "Content-Type must be application/json", false))
 		return
@@ -26,6 +30,14 @@ func (s *server) handleHandshake(w http.ResponseWriter, r *http.Request) {
 	}
 	if refusal := req.Validate(); refusal != nil {
 		writeRefusal(w, refusal)
+		return
+	}
+
+	// A successful handshake authenticates a new client -- publish the
+	// declared client_authenticated event before building the response,
+	// so latest_event_sequence already reflects it (brief §4.5/§9.2).
+	if _, err := s.Events.Publish(protocol.EventKindClientAuthenticated, protocol.ClientAuthenticatedPayload{ClientID: req.ClientID}); err != nil {
+		writeRefusal(w, protocol.NewRefusal(protocol.RefusalInvalidRequest, "failed to record client_authenticated event", false))
 		return
 	}
 
@@ -61,6 +73,26 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// snapshotAfterRegistering captures the current notify channel BEFORE
+// taking the Since(after) snapshot. This ordering is what prevents a
+// lost wakeup: a publish landing between the two calls is either already
+// visible in the snapshot (if it happened first) or closes the very
+// channel just captured (if it happened second) -- there is no window in
+// which a publish is neither observed nor signaled. Checking Since()
+// first and only registering afterward (the previous, incorrect order)
+// has exactly that window: a publish between the two calls is invisible
+// to the stale snapshot and closes a channel nobody captured yet, so the
+// event sits retained but undelivered until some unrelated later publish
+// happens to wake the reader.
+func (s *server) snapshotAfterRegistering(after uint64) (events []protocol.RunnerEvent, gap bool, notify <-chan struct{}) {
+	notify = s.Events.NotifyChannel()
+	if s.eventsSyncHook != nil {
+		s.eventsSyncHook()
+	}
+	events, gap = s.Events.Since(after)
+	return events, gap, notify
+}
+
 // handleEvents serves GET /v1/events?after=N as newline-delimited JSON
 // (brief §5.2). It emits every retained event with sequence > after, then
 // stays connected -- waking via the eventlog's broadcast channel, never by
@@ -69,6 +101,10 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeRefusal(w, protocol.NewRefusal(protocol.RefusalUnknownRoute, "GET /v1/events only", false))
+		return
+	}
+	if s.State() == protocol.RunnerStateStopping {
+		writeRefusal(w, protocol.NewRefusal(protocol.RefusalStopping, "the runner is stopping and is not accepting new event subscriptions", true))
 		return
 	}
 
@@ -82,7 +118,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		after = v
 	}
 
-	events, gap := s.Events.Since(after)
+	events, gap, notify := s.snapshotAfterRegistering(after)
 	if gap {
 		writeRefusal(w, protocol.NewRefusal(protocol.RefusalEventGap, "requested sequence is older than the retained event window", false))
 		return
@@ -114,26 +150,27 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	for {
-		notify := s.Events.NotifyChannel()
 		select {
 		case <-ctx.Done():
 			return
 		case <-notify:
-			more, gap := s.Events.Since(after)
-			if gap {
-				// Streaming has already started with a 200 response, so a
-				// mid-stream gap (unreachable in practice, since `after`
-				// only ever advances to sequences we have already
-				// observed) cannot be reported as a fresh 409. Close the
-				// stream rather than silently claim continuity.
-				return
-			}
-			if !write(more) {
-				return
-			}
-			if len(more) > 0 {
-				after = more[len(more)-1].Sequence
-			}
+		}
+
+		var more []protocol.RunnerEvent
+		more, gap, notify = s.snapshotAfterRegistering(after)
+		if gap {
+			// Streaming has already started with a 200 response, so a
+			// mid-stream gap (unreachable in practice, since `after`
+			// only ever advances to sequences we have already
+			// observed) cannot be reported as a fresh 409. Close the
+			// stream rather than silently claim continuity.
+			return
+		}
+		if !write(more) {
+			return
+		}
+		if len(more) > 0 {
+			after = more[len(more)-1].Sequence
 		}
 	}
 }

@@ -87,6 +87,20 @@ test("the runner protocol type (root and nested closed objects) carries no open 
   assert.doesNotMatch(runner, /\[k: string\]: unknown/, "generated types must not carry an open 'unknown' index signature");
 });
 
+test("the runner protocol's closed empty-object payload is not the open TypeScript {} shape", async () => {
+  const fresh = await generateAll();
+  const runner = fresh.find((f) => f.outFile === "runner-protocol-v1.ts").contents;
+
+  // `export interface EmptyPayload {}` is not a closed type in
+  // TypeScript -- `{}` accepts any non-null value, including primitives
+  // and objects with undeclared properties, even though the JSON Schema
+  // (type:object, additionalProperties:false, no properties) is closed.
+  // scripts/lib/generate.mjs's closeEmptyObjectInterfaces() rewrites this
+  // to the idiomatic closed representation.
+  assert.doesNotMatch(runner, /export interface EmptyPayload \{\}/, "EmptyPayload must not be the open {} shape");
+  assert.match(runner, /export type EmptyPayload = Record<string, never>;/, "EmptyPayload must be the closed Record<string, never> representation");
+});
+
 test("every schema file targeted for generation is listed exactly once", () => {
   const files = targets.map((t) => t.schemaFile);
   assert.deepEqual(files.sort(), [

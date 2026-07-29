@@ -223,6 +223,42 @@ func TestHandshakeRequest_Validate(t *testing.T) {
 	}
 }
 
+func TestValidateEventPayloadType(t *testing.T) {
+	valid := []struct {
+		kind    EventKind
+		payload interface{}
+	}{
+		{EventKindRunnerStarted, RunnerStartedPayload{}},
+		{EventKindClientAuthenticated, ClientAuthenticatedPayload{ClientID: "c"}},
+		{EventKindRunnerStopping, RunnerStoppingPayload{Reason: "shutting down"}},
+	}
+	for _, c := range valid {
+		if err := ValidateEventPayloadType(c.kind, c.payload); err != nil {
+			t.Errorf("expected %s/%T to be valid, got: %v", c.kind, c.payload, err)
+		}
+	}
+
+	invalid := []struct {
+		name    string
+		kind    EventKind
+		payload interface{}
+	}{
+		{"wrong type for runner_started", EventKindRunnerStarted, ClientAuthenticatedPayload{ClientID: "c"}},
+		{"wrong type for client_authenticated", EventKindClientAuthenticated, RunnerStartedPayload{}},
+		{"empty client_id", EventKindClientAuthenticated, ClientAuthenticatedPayload{ClientID: ""}},
+		{"wrong type for runner_stopping", EventKindRunnerStopping, RunnerStartedPayload{}},
+		{"empty stopping reason", EventKindRunnerStopping, RunnerStoppingPayload{Reason: ""}},
+		{"unknown kind", EventKind("bogus"), RunnerStartedPayload{}},
+	}
+	for _, c := range invalid {
+		t.Run(c.name, func(t *testing.T) {
+			if err := ValidateEventPayloadType(c.kind, c.payload); err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+	}
+}
+
 func TestDecodeEventPayload_RejectsUnknownFieldPerKind(t *testing.T) {
 	_, err := DecodeEventPayload(EventKindRunnerStarted, json.RawMessage(`{"unexpected":true}`))
 	if err == nil {

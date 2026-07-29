@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -124,6 +125,35 @@ func TestRun_FullLifecycleHandshakeStatusAndGracefulShutdown(t *testing.T) {
 	}
 	if !sawStopping {
 		t.Fatal("expected to observe a runner_stopping event on the open stream before it closed")
+	}
+
+	// Having just observed runner_stopping and the stream's subsequent
+	// closure proves state already transitioned to "stopping". A new
+	// handshake attempted now must never succeed -- either the handler
+	// refuses it with runner.stopping while the listener is still
+	// closing, or the connection is refused outright once it has fully
+	// closed. Either outcome is valid proof; only a 200 is a failure.
+	handshakeBody, err := json.Marshal(protocol.HandshakeRequest{
+		MessageKind:               protocol.MessageKindHandshakeRequest,
+		SchemaVersion:             protocol.SchemaVersion,
+		ClientID:                  "post-stopping-attempt",
+		ClientKind:                protocol.ClientKindTestClient,
+		SupportedProtocolVersions: []string{protocol.CurrentProtocolVersion},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	postStoppingReq, err := http.NewRequest(http.MethodPost, "http://"+listenAddr+"/v1/handshake", bytes.NewReader(handshakeBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	postStoppingReq.Header.Set("Content-Type", "application/json")
+	postStoppingReq.Header.Set("Authorization", "Bearer "+testToken)
+	if resp, err := client.Do(postStoppingReq); err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			t.Fatal("a new handshake must never succeed once the runner has begun stopping")
+		}
 	}
 
 	select {

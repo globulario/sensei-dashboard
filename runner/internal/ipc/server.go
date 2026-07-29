@@ -29,13 +29,24 @@ type Deps struct {
 
 type server struct {
 	Deps
+
+	// eventsSyncHook, when non-nil, is invoked inside
+	// snapshotAfterRegistering between capturing the notify channel and
+	// taking the Since() snapshot -- a deterministic test seam for
+	// reproducing the exact lost-wakeup race window (see race_test.go).
+	// Always nil in production (NewHandler never sets it).
+	eventsSyncHook func()
 }
 
 // NewHandler builds the complete authenticated HTTP handler: Origin/OPTIONS
 // guards, then bearer-auth, then routing to exactly the three endpoints
 // brief §5 authorizes. No other route or method is served.
 func NewHandler(d Deps) http.Handler {
-	s := &server{Deps: d}
+	return newHandler(d, nil)
+}
+
+func newHandler(d Deps, eventsSyncHook func()) http.Handler {
+	s := &server{Deps: d, eventsSyncHook: eventsSyncHook}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/handshake", s.withAuth(s.handleHandshake))

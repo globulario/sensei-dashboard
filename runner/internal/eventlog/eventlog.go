@@ -51,7 +51,16 @@ func New(instanceID string, capacity int) *Log {
 // ring (evicting the oldest entry if at capacity), and wakes every current
 // waiter. It is the only way a sequence number is minted -- there is no
 // other path to append to the ring.
+//
+// kind and payload are validated against the protocol's closed
+// kind-to-payload pairing BEFORE any sequence is assigned or the lock is
+// even taken: an unknown kind, a mismatched payload type, or an
+// otherwise-invalid payload (e.g. an empty required field) never
+// consumes a sequence or enters the authoritative ring.
 func (l *Log) Publish(kind protocol.EventKind, payload interface{}) (protocol.RunnerEvent, error) {
+	if err := protocol.ValidateEventPayloadType(kind, payload); err != nil {
+		return protocol.RunnerEvent{}, err
+	}
 	raw, err := protocol.EncodeEventPayload(payload)
 	if err != nil {
 		return protocol.RunnerEvent{}, err

@@ -166,6 +166,35 @@ func TestNotifyChannel_ContextCancellationUnblocksWaiterWithoutAnEvent(t *testin
 	}
 }
 
+func TestPublish_InvalidKindPayloadPairsNeverConsumeASequenceOrEnterTheRing(t *testing.T) {
+	l := New("instance-1", DefaultCapacity)
+	cases := []struct {
+		name    string
+		kind    protocol.EventKind
+		payload interface{}
+	}{
+		{"wrong payload type for runner_started", protocol.EventKindRunnerStarted, protocol.ClientAuthenticatedPayload{ClientID: "c"}},
+		{"wrong payload type for client_authenticated", protocol.EventKindClientAuthenticated, protocol.RunnerStartedPayload{}},
+		{"empty client_id", protocol.EventKindClientAuthenticated, protocol.ClientAuthenticatedPayload{ClientID: ""}},
+		{"wrong payload type for runner_stopping", protocol.EventKindRunnerStopping, protocol.RunnerStartedPayload{}},
+		{"empty stopping reason", protocol.EventKindRunnerStopping, protocol.RunnerStoppingPayload{Reason: ""}},
+		{"unknown kind", protocol.EventKind("not_a_real_kind"), protocol.RunnerStartedPayload{}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, err := l.Publish(c.kind, c.payload); err == nil {
+				t.Fatal("expected an error for an invalid kind/payload pair")
+			}
+		})
+	}
+	if l.LatestSequence() != 0 {
+		t.Fatalf("no invalid publish should ever consume a sequence, got latest sequence %d", l.LatestSequence())
+	}
+	if l.RetainedStart() != 0 {
+		t.Fatalf("no invalid publish should ever enter the ring, got retained start %d", l.RetainedStart())
+	}
+}
+
 func TestRetainedStart_ZeroWhenEmpty(t *testing.T) {
 	l := New("instance-1", DefaultCapacity)
 	if got := l.RetainedStart(); got != 0 {
